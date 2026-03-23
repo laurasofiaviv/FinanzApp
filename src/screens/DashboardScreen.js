@@ -45,7 +45,7 @@ export default function DashboardScreen({ navigation }) {
             iconName="trending-up" 
             label="Registrar Ingreso" 
             color="#2ECC71" // Verde para ingreso
-            onPress={() => console.log('Ingreso')} 
+            onPress={() => navigation.navigate('RegisterIngreso')} 
           />
           <ActionButton 
             iconName="trending-down" 

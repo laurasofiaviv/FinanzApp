@@ -8,7 +8,9 @@ import LoginFormScreen     from '../screens/LoginFormScreen';   // formulario re
 import RegisterScreen      from '../screens/RegisterScreen';
 import EmailSentScreen     from '../screens/EmailSentScreen';   // ← NUEVO
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen'; // ← NUEVO
-import DashboardScreen     from '../screens/DashboardScreen';
+import DashboardScreen        from '../screens/DashboardScreen';
+import RegisterGastoScreen   from '../screens/RegisterGastoScreen';
+import RegisterIngresoScreen from '../screens/RegisterIngresoScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,7 +20,11 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {usuario ? (
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        <>
+          <Stack.Screen name="Dashboard"        component={DashboardScreen} />
+          <Stack.Screen name="RegisterGasto"    component={RegisterGastoScreen} />
+          <Stack.Screen name="RegisterIngreso"  component={RegisterIngresoScreen} />
+        </>
       ) : (
         <>
           <Stack.Screen name="Welcome"       component={WelcomeScreen} />
