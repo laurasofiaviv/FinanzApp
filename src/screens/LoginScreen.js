@@ -1,52 +1,38 @@
-// src/screens/LoginScreen.js
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image, Alert } from 'react-native';
+import React from 'react';  // ← quita useContext
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image } from 'react-native';
 import { COLORS, SIZES } from '../constants/Colors';
+// ← quita la importación de AuthContext
 
-// Renombramos el componente para que refleje que es una pantalla de opciones
 export default function AuthOptionsScreen({ navigation }) {
-  
+  // ← quita el useContext y el login
+
   const handleLoginPress = () => {
-    // Aquí navegarías a tu pantalla con el formulario de login real
-    Alert.alert("Nota", "Aquí iría el formulario. Presiona 'Aceptar' para simular login.");
-    // login({ email: 'admin@test.com', nombre: 'Laura' }); 
+    navigation.navigate('LoginForm'); 
   };
 
   const handleRegisterPress = () => {
-    // Navegar a tu pantalla de registro existente
     navigation.navigate('Register');
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-      
-      {/* Sección Superior: Logo y Textos */}
+
       <View style={styles.headerSection}>
-        {/* Usamos el componente Image para cargar tu logo.png */}
-        <Image 
-          source={require('../../assets/logo.png')} // Ruta a tu archivo
+        <Image
+          source={require('../../assets/logo.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
-        
-        <Text style={styles.title}>
-          Bienvenido a{'\n'}Financify
-        </Text>
-        
-        <Text style={styles.subtitle}>
-          Organiza tus ingresos,{'\n'}gastos y deudas
-        </Text>
+        <Text style={styles.title}>Bienvenido a{'\n'}Financify</Text>
+        <Text style={styles.subtitle}>Organiza tus ingresos,{'\n'}gastos y deudas</Text>
       </View>
 
-      {/* Sección Inferior: Botones */}
       <View style={styles.buttonSection}>
-        {/* Botón Iniciar Sesión (Lleno) */}
         <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
           <Text style={styles.loginButtonText}>Iniciar sesión</Text>
         </TouchableOpacity>
 
-        {/* Botón Registro (Borde) */}
         <TouchableOpacity style={styles.registerButton} onPress={handleRegisterPress}>
           <Text style={styles.registerButtonText}>Registro</Text>
         </TouchableOpacity>
@@ -60,26 +46,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     paddingHorizontal: SIZES.padding,
-    justifyContent: 'space-between', // Separa cabecera de botones
-    paddingTop: 80, // Espacio superior
-    paddingBottom: 60, // Espacio inferior
+    justifyContent: 'space-between',
+    paddingTop: 80,
+    paddingBottom: 60,
   },
-  headerSection: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center', // Centra el contenido en su espacio
-  },
-  logoImage: {
-    width: 130, // Un poco más pequeño que en la bienvenida
-    height: 130,
-  },
+  headerSection: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  logoImage: { width: 130, height: 130 },
   title: {
     fontSize: SIZES.title,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
     textAlign: 'center',
     marginVertical: 20,
-    lineHeight: 34, // Mejora legibilidad del salto de línea
+    lineHeight: 34,
   },
   subtitle: {
     fontSize: SIZES.subtitle,
@@ -87,40 +66,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  buttonSection: {
-    width: '100%',
-    gap: 15, // Espacio entre botones
-  },
+  buttonSection: { width: '100%', gap: 15 },
   loginButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: 18,
     borderRadius: SIZES.borderRadius,
     alignItems: 'center',
-    width: '100%',
-    // Sombra para el botón principal
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
   },
-  loginButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  loginButtonText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
   registerButton: {
     backgroundColor: COLORS.white,
     paddingVertical: 18,
     borderRadius: SIZES.borderRadius,
     alignItems: 'center',
-    width: '100%',
     borderWidth: 1,
     borderColor: COLORS.primary,
   },
-  registerButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  registerButtonText: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold' },
 });

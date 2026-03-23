@@ -4,17 +4,21 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
+  const [pendingVerification, setPending] = useState(null);
 
-  const login = (datosUsuario) => {
-    setUsuario(datosUsuario); // Aquí guardamos al usuario cuando entra
-  };
+  const login = (datosUsuario) => setUsuario(datosUsuario);
+  const logout = () => setUsuario(null);
 
-  const logout = () => {
-    setUsuario(null); // Aquí lo borramos al salir
+  // Simula guardar usuario pendiente de verificación
+  // Reemplaza esto con tu llamada a Firebase Auth o API real
+  const simulateEmailVerification = (datos) => {
+    setPending(datos);
+    console.log(`[EMAIL SIMULADO] Enviando verificación a: ${datos.email}`);
+    // Con Firebase sería: createUserWithEmailAndPassword() + sendEmailVerification()
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, login, logout }}>
+    <AuthContext.Provider value={{ usuario, login, logout, simulateEmailVerification }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,25 +1,26 @@
-// src/constants/Colors.js
-
 export const COLORS = {
-  // Nuevo color principal del diseño (el azul de los botones)
-  primary: '#3DA9D9',    // Azul claro vibrante
-  
-  // Colores para el degradado del logo
-  logoGradientStart: '#2C5394', // Azul oscuro
-  logoGradientEnd: '#4CA1AF',   // Azul-verde claro
+  primary: '#3DA9D9',
+  primaryDark: '#2C5394',
+  secondary: '#2ECC71',
+  danger: '#E74C3C',
+  warning: '#F39C12',
 
-  // Colores de fondo y superficie
   background: '#FFFFFF',
-  
-  // Colores de texto
-  textPrimary: '#000000',
+  surface: '#F5F7FA',
+
+  textPrimary: '#1A1A2E',
   textSecondary: '#666666',
+  textLight: '#AAAAAA',     
   white: '#FFFFFF',
+
+  logoGradientStart: '#2C5394',
+  logoGradientEnd: '#4CA1AF',
 };
 
 export const SIZES = {
   padding: 25,
-  borderRadius: 12, // Redondeado de los botones
-  title: 28,        // Tamaño para "Financify" y "Bienvenido"
-  subtitle: 16,     // Tamaño para el texto descriptivo
+  borderRadius: 12,
+  headerRadius: 30,           
+  title: 28,
+  subtitle: 16,
 };
