@@ -3,7 +3,7 @@ import React, { createContext, useState } from 'react';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario] = useState(null);
+  const [usuario, setUsuario] = useState(null);//Define el estado global del usuario
   const [pendingVerification, setPending] = useState(null);
 
   const login = (datosUsuario) => setUsuario(datosUsuario);
@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   // Simula guardar usuario pendiente de verificación
   // Reemplaza esto con tu llamada a Firebase Auth o API real
   const simulateEmailVerification = (datos) => {
-    setPending(datos);
+    setPending(datos);  
     console.log(`[EMAIL SIMULADO] Enviando verificación a: ${datos.email}`);
     // Con Firebase sería: createUserWithEmailAndPassword() + sendEmailVerification()
   };
