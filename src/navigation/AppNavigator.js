@@ -11,6 +11,8 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen'; // ← NUEVO
 import DashboardScreen        from '../screens/DashboardScreen';
 import RegisterGastoScreen   from '../screens/RegisterGastoScreen';
 import RegisterIngresoScreen from '../screens/RegisterIngresoScreen';
+import ReportesScreen from '../screens/ReportesScreen';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +26,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Dashboard"        component={DashboardScreen} />
           <Stack.Screen name="RegisterGasto"    component={RegisterGastoScreen} />
           <Stack.Screen name="RegisterIngreso"  component={RegisterIngresoScreen} />
+          <Stack.Screen name="Reportes"         component={ReportesScreen} />
         </>
       ) : (
         <>

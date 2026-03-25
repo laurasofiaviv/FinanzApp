@@ -63,7 +63,7 @@ export default function DashboardScreen({ navigation }) {
             iconName="chart-bar" 
             label="Ver Reportes" 
             color="#2ECC71" // Verde para reportes
-            onPress={() => console.log('Reportes')} 
+            onPress={() => navigation.navigate('Reportes')}
           />
         </View>
 
