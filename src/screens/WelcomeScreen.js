@@ -36,7 +36,7 @@ export default function WelcomeScreen({ navigation }) {
         />
         
         {/* Nombre de la App */}
-        <Text style={styles.title}>Financify</Text>
+        <Text style={styles.title}>FinanzApp</Text>
       </Animated.View>
     </View>
   );

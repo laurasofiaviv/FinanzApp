@@ -1,18 +1,51 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import {
-  View, Text, TextInput, StyleSheet,
-  TouchableOpacity, StatusBar, Alert, ActivityIndicator
+  View, Text, TextInput, StyleSheet, TouchableOpacity,
+  StatusBar, ActivityIndicator, Image, ScrollView
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { AuthContext } from '../context/AuthContext';
 
+// ✅ Fuera del componente — mismo patrón que RegisterScreen
+function InputField({ placeholder, value, onChange, secure, show, toggleShow,
+  error, keyboardType, icon, returnKeyType, onSubmitEditing, innerRef }) {
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <View style={[styles.inputWrapper, error && styles.inputWrapperError]}>
+        <Feather name={icon} size={18} color={COLORS.textLight} style={styles.inputIcon} />
+        <TextInput
+          ref={innerRef}
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor={COLORS.textLight}
+          value={value}
+          onChangeText={onChange}
+          secureTextEntry={secure && !show}
+          autoCapitalize="none"
+          keyboardType={keyboardType || 'default'}
+          returnKeyType={returnKeyType || 'next'}
+          onSubmitEditing={onSubmitEditing}
+        />
+        {secure && (
+          <TouchableOpacity onPress={toggleShow} style={styles.eyeBtn}>
+            <Feather name={show ? 'eye-off' : 'eye'} size={18} color={COLORS.textLight} />
+          </TouchableOpacity>
+        )}
+      </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+}
+
 export default function LoginFormScreen({ navigation }) {
   const { login } = useContext(AuthContext);
-  const [email, setEmail]     = useState('');
-  const [password, setPass]   = useState('');
+  const [email, setEmail]       = useState('');
+  const [password, setPass]     = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors]   = useState({});
+  const [loading, setLoading]   = useState(false);
+  const [errors, setErrors]     = useState({});
+  const passRef = useRef(null);
 
   const validate = () => {
     const e = {};
@@ -22,17 +55,13 @@ export default function LoginFormScreen({ navigation }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     if (!validate()) return;
     setLoading(true);
-
-    // --- Simula llamada al backend (reemplaza con Firebase/API real) ---
     setTimeout(() => {
       setLoading(false);
-      // Credencial de prueba
       if (email === 'admin@financify.com' && password === 'Admin123!') {
         login({ email, nombre: 'Juan Pérez', verificado: true });
-        // AppNavigator detecta usuario != null → muestra Dashboard automáticamente
       } else {
         setErrors({ general: 'Correo o contraseña incorrectos' });
       }
@@ -40,94 +69,171 @@ export default function LoginFormScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-        <Text style={styles.backText}>← Volver</Text>
-      </TouchableOpacity>
+      {/* Logo + título — igual que Register */}
+      <View style={styles.topSection}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.appName}>FinanzApp</Text>
+        <Text style={styles.title}>Iniciar sesión</Text>
+      </View>
 
-      <Text style={styles.title}>Iniciar sesión</Text>
-      <Text style={styles.subtitle}>Bienvenido de nuevo</Text>
-
+      {/* Error general */}
       {errors.general ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorBoxText}>{errors.general}</Text>
         </View>
       ) : null}
 
-      <Text style={styles.label}>Correo electrónico</Text>
-      <TextInput
-        style={[styles.input, errors.email && styles.inputError]}
-        placeholder="tu@correo.com"
+      {/* Email — misma cajita que Register */}
+      <InputField
+        placeholder="Ingresa tu correo"
         value={email}
-        onChangeText={(v) => { setEmail(v); setErrors(p => ({...p, email: null, general: null})); }}
+        onChange={(v) => { setEmail(v); setErrors(p => ({ ...p, email: null, general: null })); }}
+        icon="mail"
         keyboardType="email-address"
-        autoCapitalize="none"
+        error={errors.email}
+        returnKeyType="next"
+        onSubmitEditing={() => passRef.current?.focus()}
       />
-      {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-      <Text style={styles.label}>Contraseña</Text>
-      <View style={styles.passRow}>
-        <TextInput
-          style={[styles.input, styles.passInput, errors.password && styles.inputError]}
-          placeholder="Tu contraseña"
-          value={password}
-          onChangeText={(v) => { setPass(v); setErrors(p => ({...p, password: null, general: null})); }}
-          secureTextEntry={!showPass}
-        />
-        <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPass(!showPass)}>
-          <Text style={styles.eyeText}>{showPass ? 'Ocultar' : 'Ver'}</Text>
-        </TouchableOpacity>
-      </View>
-      {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+      {/* Contraseña — misma cajita que Register */}
+      <InputField
+        placeholder="Ingresa tu contraseña"
+        value={password}
+        onChange={(v) => { setPass(v); setErrors(p => ({ ...p, password: null, general: null })); }}
+        icon="lock"
+        secure
+        show={showPass}
+        toggleShow={() => setShowPass(!showPass)}
+        error={errors.password}
+        innerRef={passRef}
+        returnKeyType="done"
+        onSubmitEditing={handleLogin}
+      />
 
+      {/* ¿Olvidaste tu contraseña? */}
       <TouchableOpacity
         onPress={() => navigation.navigate('ForgotPassword')}
         style={styles.forgotLink}
       >
-        <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+        <Text style={styles.forgotText}>¿Olvide contraseña?</Text>
       </TouchableOpacity>
 
+      {/* Botón */}
       <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
         {loading
           ? <ActivityIndicator color="#fff" />
           : <Text style={styles.buttonText}>Iniciar sesión</Text>
         }
       </TouchableOpacity>
-    </View>
+
+      {/* Separador */}
+      <View style={styles.separatorRow}>
+        <View style={styles.separatorLine} />
+        <Text style={styles.separatorText}>O, iniciar sesión con:</Text>
+        <View style={styles.separatorLine} />
+      </View>
+
+      {/* Botones sociales */}
+      <View style={styles.socialRow}>
+        <TouchableOpacity style={styles.socialBtn}>
+          <Text style={styles.googleText}>G</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.socialBtn}>
+          <Feather name="facebook" size={20} color="#1877F2" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.socialBtn}>
+          <Feather name="twitter" size={20} color="#1DA1F2" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Link registro */}
+      <View style={styles.registerRow}>
+        <Text style={styles.registerText}>¿No tienes cuenta? </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.registerLink}>Registro</Text>
+        </TouchableOpacity>
+      </View>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: SIZES.padding, paddingTop: 60 },
-  back: { marginBottom: 30 },
-  backText: { color: COLORS.primary, fontSize: 15 },
-  title: { fontSize: SIZES.title, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 6 },
-  subtitle: { fontSize: SIZES.subtitle, color: COLORS.textSecondary, marginBottom: 30 },
-  label: { fontSize: 13, color: COLORS.textSecondary, marginBottom: 6, marginTop: 14 },
-  input: {
-    borderWidth: 1, borderColor: '#E0E0E0', borderRadius: SIZES.borderRadius,
-    padding: 14, fontSize: 15, color: COLORS.textPrimary, backgroundColor: '#F5F7FA',
+  container: {
+    flexGrow: 1, backgroundColor: COLORS.background,
+    paddingHorizontal: SIZES.padding,
+    paddingTop: 60, paddingBottom: 40,
+    justifyContent: 'center',
   },
-  inputError: { borderColor: '#E74C3C' },
-  passRow: { flexDirection: 'row', alignItems: 'center' },
-  passInput: { flex: 1 },
-  eyeBtn: { marginLeft: 10, padding: 8 },
-  eyeText: { color: COLORS.primary, fontSize: 13 },
-  errorText: { color: '#E74C3C', fontSize: 12, marginTop: 4 },
+
+  // Top — idéntico a Register
+  topSection: { alignItems: 'center', marginBottom: 32 },
+  logo: { width: 70, height: 70, marginBottom: 8 },
+  appName: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 6 },
+  title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+
+  // Error general
   errorBox: {
     backgroundColor: '#FFEBEE', borderRadius: SIZES.borderRadius,
-    padding: 12, marginBottom: 10,
+    padding: 12, marginBottom: 12,
   },
-  errorBoxText: { color: '#C62828', fontSize: 14 },
-  forgotLink: { alignSelf: 'flex-end', marginTop: 10, marginBottom: 30 },
+  errorBoxText: { color: '#C62828', fontSize: 14, textAlign: 'center' },
+
+  // Inputs — idéntico a Register
+  inputWrapper: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: '#E0E0E0',
+    borderRadius: SIZES.borderRadius, backgroundColor: '#fff',
+    paddingHorizontal: 14, minHeight: 52,
+  },
+  inputWrapperError: { borderColor: '#E74C3C' },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 15, color: COLORS.textPrimary, paddingVertical: 14 },
+  eyeBtn: { padding: 4 },
+  errorText: { color: '#E74C3C', fontSize: 12, marginTop: 4, marginLeft: 4 },
+
+  // Forgot
+  forgotLink: { alignSelf: 'flex-end', marginBottom: 24 },
   forgotText: { color: COLORS.primary, fontSize: 13 },
+
+  // Botón — idéntico a Register
   button: {
-    backgroundColor: COLORS.primary, paddingVertical: 18,
+    backgroundColor: COLORS.primary, paddingVertical: 16,
     borderRadius: SIZES.borderRadius, alignItems: 'center',
+    marginBottom: 28,
     shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 6, elevation: 5,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+
+  // Separador
+  separatorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  separatorLine: { flex: 1, height: 1, backgroundColor: '#E0E0E0' },
+  separatorText: { marginHorizontal: 10, fontSize: 13, color: COLORS.textLight },
+
+  // Social
+  socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginBottom: 32 },
+  socialBtn: {
+    width: 48, height: 48, borderRadius: 24,
+    borderWidth: 1, borderColor: '#E0E0E0',
+    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  googleText: { fontSize: 16, fontWeight: 'bold', color: '#DB4437' },
+
+  // Registro
+  registerRow: { flexDirection: 'row', justifyContent: 'center' },
+  registerText: { fontSize: 14, color: COLORS.textSecondary },
+  registerLink: { fontSize: 14, color: COLORS.textPrimary, fontWeight: 'bold' },
 });

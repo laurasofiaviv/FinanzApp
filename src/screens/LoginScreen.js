@@ -24,7 +24,7 @@ export default function AuthOptionsScreen({ navigation }) {
           style={styles.logoImage}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Bienvenido a{'\n'}Financify</Text>
+        <Text style={styles.title}>Bienvenido a{'\n'}FinanzApp</Text>
         <Text style={styles.subtitle}>Organiza tus ingresos,{'\n'}gastos y deudas</Text>
       </View>
 
