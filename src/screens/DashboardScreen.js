@@ -1,15 +1,12 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
-// NOTA: Para el diseño final, deberías añadir la deuda técnica de FinanzContext aquí
-// import { FinanzContext } from '../context/FinanzContext'; 
+import { useFinanz } from '../context/FinanzContext'; // <-- IMPORTACIÓN AÑADIDA
 import { COLORS, SIZES } from '../constants/Colors';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 // ── Componentes Reutilizables ──
 
-// Componente para los botones de acción (Registrar Ingreso, etc.)
-// Rediseñado para coincidir con el estilo ligero/circular del ejemplo.
 const OutlinedActionIcon = ({ iconName, label, color, onPress, IconComponent = MaterialCommunityIcons }) => (
   <TouchableOpacity style={styles.gridButtonContainer} onPress={onPress}>
     <View style={styles.gridButtonBody}>
@@ -21,8 +18,6 @@ const OutlinedActionIcon = ({ iconName, label, color, onPress, IconComponent = M
   </TouchableOpacity>
 );
 
-// Componente para tarjetas de placeholder (Deudas, Alertas, Resumen)
-// Muestra un estado vacío consistente como en el ejemplo.
 const InfoPlaceholderCard = ({ title, iconName, message, buttonText, onPressButton, IconComponent = Feather }) => (
   <View style={styles.infoCard}>
     <Text style={styles.infoCardTitle}>{title}</Text>
@@ -43,20 +38,21 @@ const InfoPlaceholderCard = ({ title, iconName, message, buttonText, onPressButt
 
 export default function DashboardScreen({ navigation }) {
   const { usuario } = useContext(AuthContext);
+  
+  // <-- CONEXIÓN AL CONTEXTO FINANCIERO -->
+  const { balanceMes } = useFinanz(); 
 
-  // Usamos el nombre del usuario logueado, o uno por defecto si no lo tenemos
   const userName = usuario?.nombre || 'Juan Pérez';
 
-  // DEUDA TÉCNICA: Estos valores deberían venir de FinanzContext o un nuevo Contexto de Deudas
-  // Para el diseño inicial, hardcodeamos placeholders como en el ejemplo.
-  const balanceTotal = 0; // Ejemplo: "$ 0"
-  const hasDeudas = false; // Estado vacío
+  // <-- CÁLCULO DINÁMICO DEL BALANCE -->
+  // React re-renderizará la pantalla automáticamente cada vez que agregues un gasto o ingreso
+  const balanceTotal = balanceMes(); 
 
   return (
     <ScrollView style={styles.container} bounces={false} showsVerticalScrollIndicator={false}>
       <StatusBar barStyle="light-content" />
       
-      {/* 1. Cabecera Azul (Mantenida, ya que coincide con el diseño) */}
+      {/* 1. Cabecera Azul */}
       <View style={styles.header}>
         <View style={styles.welcomeRow}>
           <View>
@@ -73,72 +69,76 @@ export default function DashboardScreen({ navigation }) {
       {/* 2. Contenido Principal con Superposición */}
       <View style={styles.content}>
         
-        {/* NUEVA SECCIÓN: Balance General - Arriba de la cuadrícula */}
+        {/* SECCIÓN: Balance General */}
         <View style={styles.balanceDisplayCard}>
           <Text style={styles.balanceDisplayLabel}>BALANCE GENERAL</Text>
           <View style={styles.balanceValueRow}>
             <Text style={styles.balanceCurrency}>$ </Text>
+            {/* El balance ahora es dinámico */}
             <Text style={styles.balanceValueText}>{balanceTotal.toLocaleString('es-CO')}</Text>
           </View>
           
-          {/* Visual de línea de tendencia (vacío por defecto) */}
           <View style={styles.trendLineContainer}>
             <View style={styles.trendLineMain} />
             <View style={styles.trendLineEndDot} />
           </View>
           
-          <Text style={styles.balanceHelperText}>Registra tu primer movimiento para ver tu balance</Text>
+          {/* Mensaje dinámico dependiendo de si hay balance o no */}
+          <Text style={styles.balanceHelperText}>
+            {balanceTotal === 0 
+              ? "Registra tu primer movimiento para ver tu balance" 
+              : "Balance actualizado de este mes"}
+          </Text>
         </View>
 
-        {/* NUEVA SECCIÓN: Gestión de Deudas - Justo debajo del balance */}
+        {/* SECCIÓN: Gestión de Deudas */}
         <InfoPlaceholderCard 
           title="GESTIÓN DE DEUDAS"
-          iconName="file-text" // Usamos Feather para iconos lineales como el ejemplo
+          iconName="file-text"
           message="No tienes deudas registradas"
           buttonText="Añadir deuda"
           onPressButton={() => console.log('Navegar a Añadir Deuda')}
         />
 
-        {/* Cuadrícula de Botones de Acción (Rediseñada) */}
+        {/* Cuadrícula de Botones de Acción */}
         <View style={styles.grid}>
           <OutlinedActionIcon 
-            iconName="trending-up" // Icono de MaterialCommunityIcons
+            iconName="trending-up"
             label="Reg. Ingreso" 
-            color="#2ECC71" // Verde para ingreso
+            color="#2ECC71"
             onPress={() => navigation.navigate('RegisterIngreso')} 
           />
           <OutlinedActionIcon 
             iconName="trending-down" 
             label="Reg. Gasto" 
-            color="#0056FF" // Azul para gasto
+            color="#0056FF"
             onPress={() => navigation.navigate('RegisterGasto')} 
           />
           <OutlinedActionIcon 
-            iconName="plus-box-outline" // Icono de MaterialCommunityIcons para "añadir"
+            iconName="plus-box-outline"
             label="Añadir Cuenta" 
-            color="#3498DB" // Azul más claro para deuda
+            color="#3498DB"
             onPress={() => console.log('Añadir Cuenta')} 
           />
           <OutlinedActionIcon 
             iconName="chart-bar" 
             label="Reportes" 
-            color="#2ECC71" // Verde para reportes
+            color="#2ECC71"
             onPress={() => navigation.navigate('Reportes')}
           />
         </View>
 
-        {/* NUEVA SECCIÓN: Recordatorios y Alertas Automáticas */}
+        {/* SECCIÓN: Recordatorios y Alertas */}
         <InfoPlaceholderCard 
           title="RECORDATORIOS Y ALERTAS AUTOMÁTICAS"
           iconName="bell" 
           message="No hay alertas activas"
         />
 
-        {/* NUEVA SECCIÓN: Resumen de Gastos del Mes - Al final */}
+        {/* SECCIÓN: Resumen de Gastos del Mes */}
         <View style={[styles.infoCard, {marginBottom: 30}]}>
           <Text style={styles.infoCardTitle}>RESUMEN DE GASTOS DEL MES</Text>
           <View style={styles.gastosSummaryContent}>
-            {/* Visual placeholder del gráfico de dona */}
             <View style={styles.donaChartPlaceholder} />
             <Text style={styles.gastosSummaryText}>Regístrate tus gastos para ver el resumen</Text>
           </View>
@@ -153,7 +153,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     backgroundColor: COLORS.primary,
-    // Ajuste responsivo ligero: menos padding superior en web si no es responsive
     paddingTop: Platform.OS === 'web' ? 40 : 70, 
     paddingHorizontal: SIZES.padding,
     paddingBottom: 40,
@@ -185,20 +184,18 @@ const styles = StyleSheet.create({
   
   content: {
     backgroundColor: COLORS.background,
-    marginTop: -20, // Efecto de superposición
+    marginTop: -20,
     borderTopLeftRadius: SIZES.headerRadius,
     borderTopRightRadius: SIZES.headerRadius,
     paddingHorizontal: SIZES.padding,
     paddingTop: 30,
   },
 
-  // Estilos específicos para la sección de Balance General
   balanceDisplayCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
-    // Sombra suave como en el diseño de tarjetas del ejemplo
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -234,10 +231,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginBottom: 10,
   },
-  // Imitación de línea de tendencia suave del ejemplo
   trendLineMain: {
     height: 1,
-    backgroundColor: '#DFE3E8', // Gris suave
+    backgroundColor: '#DFE3E8',
     flex: 1,
     borderRadius: 0.5,
   },
@@ -253,9 +249,8 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
   },
 
-  // Estilos generales para tarjetas de información (placeholder)
   infoCard: {
-    backgroundColor: COLORS.surface, // Fondo gris muy claro
+    backgroundColor: COLORS.surface,
     borderRadius: 20,
     padding: 20,
     marginBottom: 20,
@@ -287,7 +282,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: SIZES.borderRadius,
-    backgroundColor: '#fff', // Botón blanco sobre fondo gris suave
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#DFE3E8',
   },
@@ -297,7 +292,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Grid de Botones de Acción Rediseñado
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -305,8 +299,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   gridButtonContainer: {
-    width: '47%', // Ajuste responsivo ligero
-    aspectRatio: 1.1, // Botones ligeramente más altos que anchos
+    width: '47%',
+    aspectRatio: 1.1,
     marginBottom: 15,
   },
   gridButtonBody: {
@@ -337,7 +331,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Estilos específicos para el Resumen de Gastos
   gastosSummaryContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,7 +341,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     borderWidth: 1.5,
-    borderColor: '#DFE3E8', // Imitación lineal del gráfico
+    borderColor: '#DFE3E8',
     backgroundColor: '#fff',
   },
   gastosSummaryText: {
