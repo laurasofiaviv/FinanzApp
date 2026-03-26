@@ -22,7 +22,7 @@ export default function AppNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}> 
-    //Por defecto, eliminamos la barra de título header de todas las pantallas
+    {/* Por defecto, eliminamos la barra de título header de todas las pantallas */}
       {usuario ? (
         //Usuario Autenticado (usuario !== null)
         <>
