@@ -1,51 +1,116 @@
 import React, { useContext } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { TouchableOpacity, StyleSheet, View } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
+
 import { AuthContext } from '../context/AuthContext';
+import { COLORS } from '../constants/Colors';
 
-import WelcomeScreen       from '../screens/WelcomeScreen';
-import AuthOptionsScreen   from '../screens/LoginScreen';       // botones Iniciar/Registro
-import LoginFormScreen     from '../screens/LoginFormScreen';   // formulario real
-import RegisterScreen      from '../screens/RegisterScreen';
-import EmailSentScreen     from '../screens/EmailSentScreen';  
+// Auth
+import WelcomeScreen      from '../screens/WelcomeScreen';
+import LoginScreen        from '../screens/LoginScreen';
+import LoginFormScreen    from '../screens/LoginFormScreen';
+import RegisterScreen     from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import DashboardScreen        from '../screens/DashboardScreen';
-import RegisterGastoScreen   from '../screens/RegisterGastoScreen';
-import RegisterIngresoScreen from '../screens/RegisterIngresoScreen';
-import ReportesScreen from '../screens/ReportesScreen';
+import EmailSentScreen    from '../screens/EmailSentScreen';
 
-//Inicialización del Stack
-const Stack = createNativeStackNavigator();
-//Este objeto contiene dos propiedades fundamentales: Stack.Navigator (el contenedor) y 
-// Stack.Screen (cada una de las páginas).
-export default function AppNavigator() {
-  const { usuario } = useContext(AuthContext); //Extraemos el objeto 'usuario' del estado global.
 
+// Main
+import DashboardScreen    from '../screens/DashboardScreen';
+import DebtScreen         from '../screens/DebtScreen';
+import RegisterMovScreen  from '../screens/RegisterMovScreen';
+import ReportesScreen     from '../screens/ReportesScreen';
+import ProfileScreen      from '../screens/ProfileScreen';
+import AuthOptionsScreen   from '../screens/LoginScreen';       // botones Iniciar/Registro
+
+const Stack = createStackNavigator();
+const Tab   = createBottomTabNavigator();
+
+function AuthStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}> 
-    {/* Por defecto, eliminamos la barra de título header de todas las pantallas */}
-      {usuario ? (
-        //Usuario Autenticado (usuario !== null)
-        <>
-          <Stack.Screen name="Dashboard"        component={DashboardScreen} />
-          <Stack.Screen name="RegisterGasto"    component={RegisterGastoScreen} />
-          <Stack.Screen name="RegisterIngreso"  component={RegisterIngresoScreen} />
-          <Stack.Screen name="Reportes"         component={ReportesScreen} />
-        </>
-      ) : (
-        <>
-          <Stack.Screen name="Welcome"       component={WelcomeScreen} />
-          <Stack.Screen name="AuthOptions"   component={AuthOptionsScreen} />
-          <Stack.Screen name="LoginForm"     component={LoginFormScreen} />
-          <Stack.Screen name="Register"      component={RegisterScreen}
-          //título y un botón de "atrás" automático que nos da la librería
-            options={{ headerShown: true, title: 'Crear cuenta' }} />
-          <Stack.Screen name="EmailSent"     component={EmailSentScreen}
-          //bloqueamos que el usuario pueda volver atrás manualmente, forzándolo a seguir el flujo de verificación.
-            options={{ headerShown: true, title: 'Verifica tu correo', headerBackVisible: false }} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen}
-            options={{ headerShown: true, title: 'Recuperar contraseña' }} />
-        </>
-      )}
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Welcome"        component={WelcomeScreen} />
+      <Stack.Screen name="AuthOptions"    component={AuthOptionsScreen} />
+      <Stack.Screen name="Login"          component={LoginScreen} />
+      <Stack.Screen name="LoginForm"      component={LoginFormScreen} />
+      <Stack.Screen name="Register"       component={RegisterScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="EmailSent"      component={EmailSentScreen} />
     </Stack.Navigator>
   );
 }
+
+function AddButton({ onPress }) {
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.addButton} activeOpacity={0.85}>
+      <Ionicons name="add" size={30} color="#fff" />
+    </TouchableOpacity>
+  );
+}
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: '#AAAAAA',
+        tabBarStyle: {
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
+          borderTopWidth: 0.5,
+          borderTopColor: '#E0E0E0',
+          backgroundColor: '#fff',
+        },
+        tabBarIcon: ({ focused, color }) => {
+          const icons = {
+            Inicio:    focused ? 'home'       : 'home-outline',
+            Deudas:    focused ? 'wallet'     : 'wallet-outline',
+            Registrar: 'add',
+            Reportes:  focused ? 'bar-chart'  : 'bar-chart-outline',
+            Perfil:    focused ? 'person'     : 'person-outline',
+          };
+          return <Ionicons name={icons[route.name]} size={22} color={color} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Inicio"    component={DashboardScreen} />
+      <Tab.Screen name="Deudas"    component={DebtScreen} />
+      <Tab.Screen
+        name="Registrar"
+        component={RegisterMovScreen}
+        options={{
+          tabBarLabel: 'Registrar',
+          tabBarButton: (props) => <AddButton {...props} />,
+        }}
+      />
+      <Tab.Screen name="Reportes"  component={ReportesScreen} />
+      <Tab.Screen name="Perfil"    component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  const { usuario } = useContext(AuthContext);
+  return usuario ? <MainTabs /> : <AuthStack />;
+}
+
+const styles = StyleSheet.create({
+  addButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -18,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+});
