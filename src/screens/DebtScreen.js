@@ -11,26 +11,40 @@ export default function DebtScreen() {
   const { deudas, marcarDeudaPagada } = useFinanz();
 
   const pendientes = deudas.filter((d) => !d.pagada);
-  const pagadas    = deudas.filter((d) => d.pagada);
+  const pagadas = deudas.filter((d) => d.pagada);
+  
+  // Cálculo del total basado en el monto pendiente
   const totalPendiente = pendientes.reduce((acc, d) => acc + parseFloat(d.monto || 0), 0);
+
+  // Función para determinar la urgencia de la fecha
+  const obtenerColorUrgencia = (fechaVencimiento) => {
+    if (!fechaVencimiento) return COLORS.textLight;
+    
+    const [d, m, y] = fechaVencimiento.split('/');
+    const fechaVence = new Date(y, m - 1, d);
+    const hoy = new Date();
+    const diffTime = fechaVence - hoy;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return COLORS.danger; // Vencida
+    if (diffDays <= 3) return '#E67E22'; // Vence pronto (Naranja)
+    return COLORS.textLight;
+  };
 
   return (
     <ScrollView style={styles.container} bounces={false} showsVerticalScrollIndicator={false}>
       <StatusBar barStyle="light-content" />
 
-      {/* ── Cabecera ── */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis Deudas</Text>
         <Text style={styles.headerSub}>
           {pendientes.length === 0
             ? 'No tienes deudas pendientes'
-            : `${pendientes.length} deuda${pendientes.length > 1 ? 's' : ''} pendiente${pendientes.length > 1 ? 's' : ''}`}
+            : `${pendientes.length} ${pendientes.length > 1 ? 'deudas pendientes' : 'deuda pendiente'}`}
         </Text>
       </View>
 
       <View style={styles.content}>
-
-        {/* ── Resumen total ── */}
         {pendientes.length > 0 && (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>TOTAL PENDIENTE</Text>
@@ -40,7 +54,6 @@ export default function DebtScreen() {
           </View>
         )}
 
-        {/* ── Lista pendientes ── */}
         {pendientes.length === 0 ? (
           <View style={styles.emptyCard}>
             <Feather name="check-circle" size={40} color={COLORS.secondary} />
@@ -50,62 +63,73 @@ export default function DebtScreen() {
         ) : (
           <>
             <Text style={styles.sectionTitle}>PENDIENTES</Text>
-            {pendientes.map((deuda) => (
-              <View key={deuda.id} style={styles.debtCard}>
-                <View style={styles.debtLeft}>
-                  <Text style={styles.debtTipo}>{deuda.tipo || 'Deuda'}</Text>
-                  {deuda.descripcion ? (
-                    <Text style={styles.debtDesc} numberOfLines={1}>{deuda.descripcion}</Text>
-                  ) : null}
-                  <Text style={styles.debtFecha}>{deuda.fecha}</Text>
+            {pendientes.map((deuda) => {
+              const colorVence = obtenerColorUrgencia(deuda.fechaVencimiento);
+              return (
+                <View key={deuda.id} style={styles.debtCard}>
+                  <View style={styles.debtLeft}>
+                    <Text style={styles.debtTipo}>{deuda.tipo || 'Deuda'}</Text>
+                    {deuda.descripcion ? (
+                      <Text style={styles.debtDesc} numberOfLines={1}>{deuda.descripcion}</Text>
+                    ) : null}
+                    
+                    {/* Visualización de cuotas si existen */}
+                    {deuda.cuotas && (
+                      <View style={styles.cuotaBadge}>
+                        <Text style={styles.cuotaText}>Plazo: {deuda.cuotas} meses</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.fechaRow}>
+                      <Feather name="calendar" size={10} color={colorVence} />
+                      <Text style={[styles.debtFecha, { color: colorVence }]}>
+                        Vence: {deuda.fechaVencimiento || deuda.fecha}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.debtRight}>
+                    <Text style={styles.debtMonto}>
+                      ${parseFloat(deuda.monto).toLocaleString('es-CO')}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.paidBtn}
+                      onPress={() => marcarDeudaPagada(deuda.id)}
+                    >
+                      <Feather name="dollar-sign" size={12} color={COLORS.secondary} />
+                      <Text style={styles.paidBtnText}>Pagar</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.debtRight}>
-                  <Text style={styles.debtMonto}>
-                    ${parseFloat(deuda.monto).toLocaleString('es-CO')}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.paidBtn}
-                    onPress={() => marcarDeudaPagada(deuda.id)}
-                  >
-                    <Feather name="check" size={13} color={COLORS.secondary} />
-                    <Text style={styles.paidBtnText}>Pagar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
 
-        {/* ── Lista pagadas ── */}
+        {/* Sección de Pagadas (Simplificada) */}
         {pagadas.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 10 }]}>PAGADAS</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 10 }]}>HISTORIAL DE PAGOS</Text>
             {pagadas.map((deuda) => (
               <View key={deuda.id} style={[styles.debtCard, styles.debtCardPagada]}>
                 <View style={styles.debtLeft}>
-                  <Text style={[styles.debtTipo, { color: COLORS.textLight }]}>{deuda.tipo || 'Deuda'}</Text>
-                  {deuda.descripcion ? (
-                    <Text style={[styles.debtDesc, { color: COLORS.textLight }]} numberOfLines={1}>
-                      {deuda.descripcion}
-                    </Text>
-                  ) : null}
-                  <Text style={styles.debtFecha}>{deuda.fecha}</Text>
+                  <Text style={[styles.debtTipo, { color: COLORS.textLight }]}>{deuda.tipo}</Text>
+                  <Text style={styles.debtFecha}>Pagado el: {deuda.fecha}</Text>
                 </View>
                 <View style={styles.debtRight}>
-                  <Text style={[styles.debtMonto, { color: COLORS.textLight }]}>
+                  <Text style={[styles.debtMonto, { color: COLORS.textLight, textDecorationLine: 'line-through' }]}>
                     ${parseFloat(deuda.monto).toLocaleString('es-CO')}
                   </Text>
                   <View style={styles.paidBadge}>
-                    <Feather name="check-circle" size={12} color={COLORS.secondary} />
-                    <Text style={styles.paidBadgeText}>Pagada</Text>
+                    <Feather name="check" size={10} color={COLORS.secondary} />
+                    <Text style={styles.paidBadgeText}>Listo</Text>
                   </View>
                 </View>
               </View>
             ))}
           </>
         )}
-
-        <View style={{ height: 30 }} />
+        <View style={{ height: 80 }} />
       </View>
     </ScrollView>
   );
@@ -115,65 +139,57 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     backgroundColor: COLORS.primaryDark,
-    paddingTop: Platform.OS === 'web' ? 40 : 70,
+    paddingTop: Platform.OS === 'ios' ? 70 : 50,
     paddingHorizontal: SIZES.padding,
     paddingBottom: 40,
     borderBottomLeftRadius: SIZES.headerRadius,
     borderBottomRightRadius: SIZES.headerRadius,
   },
-  headerTitle: { color: '#fff', fontSize: SIZES.title, fontWeight: 'bold', marginBottom: 4 },
-  headerSub:   { color: 'rgba(255,255,255,0.75)', fontSize: 14 },
+  headerTitle: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
+  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 4 },
   content: {
-    marginTop: -20,
-    borderTopLeftRadius: SIZES.headerRadius,
-    borderTopRightRadius: SIZES.headerRadius,
+    marginTop: -25,
     backgroundColor: COLORS.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     paddingHorizontal: SIZES.padding,
-    paddingTop: 28,
+    paddingTop: 30,
   },
   summaryCard: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: 16, padding: 20, marginBottom: 22,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20, padding: 25, marginBottom: 25,
+    alignItems: 'center', elevation: 4,
+  },
+  summaryLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  summaryAmount: { color: '#fff', fontSize: 34, fontWeight: 'bold', marginTop: 5 },
+  sectionTitle: { fontSize: 13, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 12 },
+  debtCard: {
+    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18,
+    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F0F0F0',
     alignItems: 'center',
   },
-  summaryLabel:  { color: 'rgba(255,255,255,0.7)', fontSize: 12, letterSpacing: 0.5, marginBottom: 6 },
-  summaryAmount: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  emptyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 20, padding: 32,
-    alignItems: 'center', gap: 12, marginTop: 10,
+  debtCardPagada: { backgroundColor: '#F9F9F9', borderColor: '#EEE' },
+  debtLeft: { flex: 1 },
+  debtTipo: { fontSize: 15, fontWeight: 'bold', color: COLORS.textPrimary },
+  debtDesc: { fontSize: 13, color: COLORS.textSecondary, marginVertical: 2 },
+  cuotaBadge: {
+    backgroundColor: '#F0F4FF', alignSelf: 'flex-start',
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginVertical: 4
   },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
-  emptyText:  { fontSize: 14, color: COLORS.textLight, textAlign: 'center' },
-  sectionTitle: {
-    fontSize: 12, fontWeight: 'bold', color: COLORS.textSecondary,
-    letterSpacing: 0.5, marginBottom: 10,
-  },
-  debtCard: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14, padding: 16, marginBottom: 10,
-    borderWidth: 1, borderColor: '#F0F0F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
-  },
-  debtCardPagada: { backgroundColor: COLORS.surface, borderColor: '#E8E8E8' },
-  debtLeft:  { flex: 1, marginRight: 12 },
-  debtTipo:  { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 2 },
-  debtDesc:  { fontSize: 12, color: COLORS.textSecondary, marginBottom: 4 },
-  debtFecha: { fontSize: 11, color: COLORS.textLight },
-  debtRight: { alignItems: 'flex-end', gap: 8 },
-  debtMonto: { fontSize: 16, fontWeight: 'bold', color: COLORS.danger },
+  cuotaText: { fontSize: 10, color: COLORS.primary, fontWeight: '600' },
+  fechaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  debtFecha: { fontSize: 12, fontWeight: '500' },
+  debtRight: { alignItems: 'flex-end' },
+  debtMonto: { fontSize: 17, fontWeight: 'bold', color: COLORS.danger, marginBottom: 8 },
   paidBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingVertical: 5, paddingHorizontal: 10,
-    borderRadius: 8, borderWidth: 1, borderColor: COLORS.secondary,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#E8F5E9', paddingVertical: 6, paddingHorizontal: 12,
+    borderRadius: 10, borderWidth: 1, borderColor: COLORS.secondary,
   },
-  paidBtnText: { fontSize: 11, color: COLORS.secondary, fontWeight: '600' },
-  paidBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingVertical: 4, paddingHorizontal: 8,
-    borderRadius: 8, backgroundColor: '#F0FBF4',
-  },
-  paidBadgeText: { fontSize: 11, color: COLORS.secondary, fontWeight: '600' },
+  paidBtnText: { fontSize: 12, color: COLORS.secondary, fontWeight: 'bold' },
+  paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6 },
+  paidBadgeText: { fontSize: 12, color: COLORS.secondary, fontWeight: '600' },
+  emptyCard: { alignItems: 'center', padding: 40 },
+  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginTop: 10 },
+  emptyText: { fontSize: 14, color: COLORS.textLight, textAlign: 'center', marginTop: 5 },
 });

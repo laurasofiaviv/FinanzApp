@@ -8,21 +8,20 @@ import { AuthContext } from '../context/AuthContext';
 import { COLORS } from '../constants/Colors';
 
 // Auth
-import WelcomeScreen      from '../screens/WelcomeScreen';
-import LoginScreen        from '../screens/LoginScreen';
-import LoginFormScreen    from '../screens/LoginFormScreen';
-import RegisterScreen     from '../screens/RegisterScreen';
-import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import EmailSentScreen    from '../screens/EmailSentScreen';
-
+import WelcomeScreen         from '../screens/WelcomeScreen';
+import LoginScreen           from '../screens/LoginScreen';
+import LoginFormScreen       from '../screens/LoginFormScreen';
+import RegisterScreen        from '../screens/RegisterScreen';
+import ForgotPasswordScreen  from '../screens/ForgotPasswordScreen';
+import EmailSentScreen       from '../screens/EmailSentScreen';
 
 // Main
-import DashboardScreen    from '../screens/DashboardScreen';
-import DebtScreen         from '../screens/DebtScreen';
-import RegisterMovScreen  from '../screens/RegisterMovScreen';
-import ReportesScreen     from '../screens/ReportesScreen';
-import ProfileScreen      from '../screens/ProfileScreen';
-import AuthOptionsScreen   from '../screens/LoginScreen';       // botones Iniciar/Registro
+import DashboardScreen     from '../screens/DashboardScreen';
+import DebtScreen          from '../screens/DebtScreen';
+import RegisterMovScreen   from '../screens/RegisterMovScreen';
+import ReportesScreen      from '../screens/ReportesScreen';
+import ProfileScreen       from '../screens/ProfileScreen';
+import AuthOptionsScreen   from '../screens/LoginScreen';
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -41,11 +40,21 @@ function AuthStack() {
   );
 }
 
+/** * BOTÓN PERSONALIZADO "AGREGAR"
+ * Se usa un Wrapper con 'top' para elevar el botón sin romper 
+ * el alineado flex del icono interno.
+ */
 function AddButton({ onPress }) {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.addButton} activeOpacity={0.85}>
-      <Ionicons name="add" size={30} color="#fff" />
-    </TouchableOpacity>
+    <View style={styles.addButtonWrapper}>
+      <TouchableOpacity 
+        onPress={onPress} 
+        style={styles.addButton} 
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -99,18 +108,26 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
-  addButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.primary,
+  // Contenedor que eleva el botón
+  addButtonWrapper: {
+    top: -20, 
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -18,
+  },
+  // El círculo azul propiamente dicho
+  addButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    // Centrado perfecto del signo +
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Sombra para dar profundidad
     shadowColor: COLORS.primary,
     shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 8,
   },
 });

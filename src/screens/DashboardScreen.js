@@ -24,11 +24,20 @@ const CATEGORIA_ICON = {
   'Otros':          'more-horizontal',
 };
 
-export default function DashboardScreen() {
-  const { usuario }           = useContext(AuthContext);
+export default function DashboardScreen({ navigation }) {
+  const { usuario } = useContext(AuthContext);
   const { balanceMes, totalIngresosMes, totalGastosMes, movimientosRecientes } = useFinanz();
 
-  const userName   = usuario?.nombre || 'Juan Pérez';
+  const userName = usuario?.nombre || 'Juan Pérez';
+  
+  // ✅ CORRECCIÓN 1: Definir la variable initials antes de usarla
+  const initials = userName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+
   const balance    = balanceMes();
   const ingresos   = totalIngresosMes();
   const gastos     = totalGastosMes();
@@ -47,14 +56,18 @@ export default function DashboardScreen() {
             <Text style={styles.welcomeText}>Bienvenido de nuevo</Text>
             <Text style={styles.userNameText}>{userName}</Text>
           </View>
-          <View style={styles.profileCircle}>
-            <Feather name="user" size={26} color={COLORS.primary} />
-          </View>
+
+          <TouchableOpacity 
+            style={styles.profileCircle}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Perfil')}
+          >
+            <Text style={styles.initialsText}>{initials}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.content}>
-
         {/* ── Balance ── */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>BALANCE GENERAL</Text>
@@ -132,7 +145,6 @@ export default function DashboardScreen() {
             })
           )}
         </View>
-
       </View>
     </ScrollView>
   );
@@ -156,9 +168,17 @@ const styles = StyleSheet.create({
   welcomeText:  { color: COLORS.white, fontSize: 14, opacity: 0.8 },
   userNameText: { color: COLORS.white, fontSize: SIZES.title, fontWeight: 'bold' },
   profileCircle: {
-    width: 55, height: 55, borderRadius: 27.5,
-    backgroundColor: COLORS.white,
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: COLORS.secondary, // Cambiado a verde como tu diseño
     justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  // ✅ CORRECCIÓN 2: Agregar estilo para el texto de las iniciales
+  initialsText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   content: {
     backgroundColor: COLORS.background,
@@ -209,7 +229,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, justifyContent: 'center',
     alignItems: 'center', marginRight: 12,
   },
-  movInfo:   { flex: 1 },
+  movInfo:    { flex: 1 },
   movNombre: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
   movFecha:  { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
   movMonto:  { fontSize: 14, fontWeight: 'bold' },
