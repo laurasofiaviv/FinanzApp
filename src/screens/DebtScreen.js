@@ -1,53 +1,104 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, Platform,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useFinanz } from '../context/FinanzContext';
 
 export default function DebtScreen() {
-  const { deudas, marcarDeudaPagada } = useFinanz();
+  const { deudas, pagarCuota } = useFinanz();
 
-  const pendientes = deudas.filter((d) => !d.pagada);
-  const pagadas = deudas.filter((d) => d.pagada);
-  
-  // Cálculo del total basado en el monto pendiente
-  const totalPendiente = pendientes.reduce((acc, d) => acc + parseFloat(d.monto || 0), 0);
+  const hoy = new Date();
 
-  // Función para determinar la urgencia de la fecha
-  const obtenerColorUrgencia = (fechaVencimiento) => {
-    if (!fechaVencimiento) return COLORS.textLight;
-    
-    const [d, m, y] = fechaVencimiento.split('/');
-    const fechaVence = new Date(y, m - 1, d);
-    const hoy = new Date();
-    const diffTime = fechaVence - hoy;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const deudasProcesadas = deudas.map((d) => {
+    const montoPagado = d.montoPagado || 0;
+    const cuotas = parseInt(d.cuotas) || 0;
+    const cuotasPagadas = d.cuotasPagadas || 0;
 
-    if (diffDays < 0) return COLORS.danger; // Vencida
-    if (diffDays <= 3) return '#E67E22'; // Vence pronto (Naranja)
+    const fechaBase = d.fechaVencimiento || d.fecha;
+
+    if (!fechaBase) {
+      return {
+        ...d,
+        estado: 'pendiente',
+        diffDays: 999,
+        restante: d.monto,
+        progreso: 0,
+      };
+    }
+
+    const [dia, mes, año] = fechaBase.split('/');
+    const fechaVence = new Date(año, mes - 1, dia);
+
+    const diffDays = Math.ceil(
+      (fechaVence - hoy) / (1000 * 60 * 60 * 24)
+    );
+
+    let estado = 'pendiente';
+    if (montoPagado >= d.monto) estado = 'pagada';
+    else if (diffDays < 0) estado = 'vencida';
+
+    return {
+      ...d,
+      estado,
+      diffDays,
+      restante: d.monto - montoPagado,
+      progreso:
+        cuotas > 0
+          ? cuotasPagadas / cuotas
+          : montoPagado / d.monto,
+    };
+  });
+
+  const pendientes = deudasProcesadas
+    .filter((d) => d.estado !== 'pagada')
+    .sort((a, b) => a.diffDays - b.diffDays);
+
+  const pagadas = deudasProcesadas.filter(
+    (d) => d.estado === 'pagada'
+  );
+
+  const totalPendiente = pendientes.reduce(
+    (acc, d) => acc + d.restante,
+    0
+  );
+
+  const getUrgencyColor = (diffDays) => {
+    if (diffDays < 0) return COLORS.danger;
+    if (diffDays <= 3) return '#E67E22';
     return COLORS.textLight;
   };
 
+  const getUrgencyText = (diffDays) => {
+    if (diffDays < 0) return 'Vencida';
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays <= 3) return `En ${diffDays} días`;
+    return 'A tiempo';
+  };
+
   return (
-    <ScrollView style={styles.container} bounces={false} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis Deudas</Text>
         <Text style={styles.headerSub}>
-          {pendientes.length === 0
-            ? 'No tienes deudas pendientes'
-            : `${pendientes.length} ${pendientes.length > 1 ? 'deudas pendientes' : 'deuda pendiente'}`}
+          {pendientes.length} pendientes
         </Text>
       </View>
 
       <View style={styles.content}>
         {pendientes.length > 0 && (
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>TOTAL PENDIENTE</Text>
+            <Text style={styles.summaryLabel}>
+              TOTAL PENDIENTE
+            </Text>
             <Text style={styles.summaryAmount}>
               ${totalPendiente.toLocaleString('es-CO')}
             </Text>
@@ -56,48 +107,96 @@ export default function DebtScreen() {
 
         {pendientes.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Feather name="check-circle" size={40} color={COLORS.secondary} />
-            <Text style={styles.emptyTitle}>¡Todo al día!</Text>
-            <Text style={styles.emptyText}>No tienes deudas pendientes registradas.</Text>
+            <Feather
+              name="check-circle"
+              size={40}
+              color={COLORS.secondary}
+            />
+            <Text style={styles.emptyTitle}>
+              ¡Todo al día!
+            </Text>
           </View>
         ) : (
           <>
-            <Text style={styles.sectionTitle}>PENDIENTES</Text>
+            <Text style={styles.sectionTitle}>
+              PENDIENTES
+            </Text>
+
             {pendientes.map((deuda) => {
-              const colorVence = obtenerColorUrgencia(deuda.fechaVencimiento);
+              const color = getUrgencyColor(
+                deuda.diffDays
+              );
+
               return (
-                <View key={deuda.id} style={styles.debtCard}>
+                <View
+                  key={deuda.id}
+                  style={styles.debtCard}
+                >
                   <View style={styles.debtLeft}>
-                    <Text style={styles.debtTipo}>{deuda.tipo || 'Deuda'}</Text>
-                    {deuda.descripcion ? (
-                      <Text style={styles.debtDesc} numberOfLines={1}>{deuda.descripcion}</Text>
-                    ) : null}
-                    
-                    {/* Visualización de cuotas si existen */}
-                    {deuda.cuotas && (
-                      <View style={styles.cuotaBadge}>
-                        <Text style={styles.cuotaText}>Plazo: {deuda.cuotas} meses</Text>
-                      </View>
+                    <Text style={styles.debtTipo}>
+                      {deuda.tipo}
+                    </Text>
+
+                    {deuda.descripcion && (
+                      <Text style={styles.debtDesc}>
+                        {deuda.descripcion}
+                      </Text>
                     )}
 
-                    <View style={styles.fechaRow}>
-                      <Feather name="calendar" size={10} color={colorVence} />
-                      <Text style={[styles.debtFecha, { color: colorVence }]}>
-                        Vence: {deuda.fechaVencimiento || deuda.fecha}
-                      </Text>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${
+                              deuda.progreso * 100
+                            }%`,
+                          },
+                        ]}
+                      />
                     </View>
+
+                    <Text style={styles.progressText}>
+                      {deuda.cuotas
+                        ? `${deuda.cuotasPagadas || 0}/${
+                            deuda.cuotas
+                          } cuotas`
+                        : `${Math.round(
+                            deuda.progreso * 100
+                          )}% pagado`}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.debtFecha,
+                        { color },
+                      ]}
+                    >
+                      {getUrgencyText(
+                        deuda.diffDays
+                      )}
+                    </Text>
                   </View>
 
                   <View style={styles.debtRight}>
                     <Text style={styles.debtMonto}>
-                      ${parseFloat(deuda.monto).toLocaleString('es-CO')}
+                      $
+                      {deuda.restante.toLocaleString(
+                        'es-CO'
+                      )}
                     </Text>
+
                     <TouchableOpacity
                       style={styles.paidBtn}
-                      onPress={() => marcarDeudaPagada(deuda.id)}
+                      onPress={() =>
+                        pagarCuota(deuda.id)
+                      }
                     >
-                      <Feather name="dollar-sign" size={12} color={COLORS.secondary} />
-                      <Text style={styles.paidBtnText}>Pagar</Text>
+                      <Text
+                        style={styles.paidBtnText}
+                      >
+                        Abonar
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -106,90 +205,131 @@ export default function DebtScreen() {
           </>
         )}
 
-        {/* Sección de Pagadas (Simplificada) */}
         {pagadas.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 10 }]}>HISTORIAL DE PAGOS</Text>
-            {pagadas.map((deuda) => (
-              <View key={deuda.id} style={[styles.debtCard, styles.debtCardPagada]}>
-                <View style={styles.debtLeft}>
-                  <Text style={[styles.debtTipo, { color: COLORS.textLight }]}>{deuda.tipo}</Text>
-                  <Text style={styles.debtFecha}>Pagado el: {deuda.fecha}</Text>
-                </View>
-                <View style={styles.debtRight}>
-                  <Text style={[styles.debtMonto, { color: COLORS.textLight, textDecorationLine: 'line-through' }]}>
-                    ${parseFloat(deuda.monto).toLocaleString('es-CO')}
-                  </Text>
-                  <View style={styles.paidBadge}>
-                    <Feather name="check" size={10} color={COLORS.secondary} />
-                    <Text style={styles.paidBadgeText}>Listo</Text>
-                  </View>
-                </View>
+            <Text style={styles.sectionTitle}>
+              PAGADAS
+            </Text>
+            {pagadas.map((d) => (
+              <View
+                key={d.id}
+                style={[
+                  styles.debtCard,
+                  { opacity: 0.6 },
+                ]}
+              >
+                <Text>{d.tipo}</Text>
+                <Text>
+                  $
+                  {d.monto.toLocaleString('es-CO')}
+                </Text>
               </View>
             ))}
           </>
         )}
-        <View style={{ height: 80 }} />
       </View>
     </ScrollView>
   );
 }
 
+/* 🔥 ESTILOS (ESTO ERA LO QUE TE FALTABA) */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
-    backgroundColor: COLORS.primaryDark,
-    paddingTop: Platform.OS === 'ios' ? 70 : 50,
-    paddingHorizontal: SIZES.padding,
-    paddingBottom: 40,
-    borderBottomLeftRadius: SIZES.headerRadius,
-    borderBottomRightRadius: SIZES.headerRadius,
-  },
-  headerTitle: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
-  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 14, marginTop: 4 },
-  content: {
-    marginTop: -25,
+  container: {
+    flex: 1,
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: SIZES.padding,
-    paddingTop: 30,
+  },
+  header: {
+    padding: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    color: COLORS.text,
+    fontWeight: 'bold',
+  },
+  headerSub: {
+    color: COLORS.textLight,
+  },
+  content: {
+    padding: 20,
   },
   summaryCard: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 20, padding: 25, marginBottom: 25,
-    alignItems: 'center', elevation: 4,
+    backgroundColor: COLORS.card,
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
   },
-  summaryLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  summaryAmount: { color: '#fff', fontSize: 34, fontWeight: 'bold', marginTop: 5 },
-  sectionTitle: { fontSize: 13, fontWeight: 'bold', color: COLORS.textSecondary, marginBottom: 12 },
+  summaryLabel: {
+    color: COLORS.textLight,
+  },
+  summaryAmount: {
+    fontSize: 20,
+    color: COLORS.text,
+    fontWeight: 'bold',
+  },
+  sectionTitle: {
+    marginBottom: 10,
+    color: COLORS.textLight,
+  },
   debtCard: {
-    flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18,
-    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F0F0F0',
-    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
   },
-  debtCardPagada: { backgroundColor: '#F9F9F9', borderColor: '#EEE' },
-  debtLeft: { flex: 1 },
-  debtTipo: { fontSize: 15, fontWeight: 'bold', color: COLORS.textPrimary },
-  debtDesc: { fontSize: 13, color: COLORS.textSecondary, marginVertical: 2 },
-  cuotaBadge: {
-    backgroundColor: '#F0F4FF', alignSelf: 'flex-start',
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginVertical: 4
+  debtLeft: {
+    flex: 1,
   },
-  cuotaText: { fontSize: 10, color: COLORS.primary, fontWeight: '600' },
-  fechaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  debtFecha: { fontSize: 12, fontWeight: '500' },
-  debtRight: { alignItems: 'flex-end' },
-  debtMonto: { fontSize: 17, fontWeight: 'bold', color: COLORS.danger, marginBottom: 8 },
+  debtRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  debtTipo: {
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
+  debtDesc: {
+    color: COLORS.textLight,
+  },
+  debtMonto: {
+    fontWeight: 'bold',
+    color: COLORS.text,
+  },
   paidBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#E8F5E9', paddingVertical: 6, paddingHorizontal: 12,
-    borderRadius: 10, borderWidth: 1, borderColor: COLORS.secondary,
+    marginTop: 10,
+    padding: 6,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 6,
   },
-  paidBtnText: { fontSize: 12, color: COLORS.secondary, fontWeight: 'bold' },
-  paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, opacity: 0.6 },
-  paidBadgeText: { fontSize: 12, color: COLORS.secondary, fontWeight: '600' },
-  emptyCard: { alignItems: 'center', padding: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary, marginTop: 10 },
-  emptyText: { fontSize: 14, color: COLORS.textLight, textAlign: 'center', marginTop: 5 },
+  paidBtnText: {
+    color: '#fff',
+    fontSize: 12,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#ddd',
+    borderRadius: 5,
+    marginVertical: 6,
+  },
+  progressFill: {
+    height: 6,
+    backgroundColor: COLORS.secondary,
+    borderRadius: 5,
+  },
+  progressText: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  debtFecha: {
+    fontSize: 12,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  emptyTitle: {
+    marginTop: 10,
+    color: COLORS.text,
+  },
 });
