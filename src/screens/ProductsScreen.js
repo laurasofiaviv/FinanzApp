@@ -1,4 +1,4 @@
-// ProductosScreen.js
+// ProductsScreen.js
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
@@ -136,7 +136,7 @@ function ProductoCard({ producto, onEliminar }) {
 }
 
 // ── PANTALLA PRINCIPAL ─────────────────────────────────────────────────────
-export default function ProductosScreen({ navigation }) {
+export default function ProductsScreen({ navigation }) {
     const { productos, agregarProducto, eliminarProducto } = useFinanz();
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState(formVacio());

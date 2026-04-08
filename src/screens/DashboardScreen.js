@@ -5,32 +5,39 @@ import {
   ScrollView, StatusBar, Platform,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
-import { useFinanz }   from '../context/FinanzContext';
+import { useFinanz } from '../context/FinanzContext';
 import { COLORS, SIZES } from '../constants/Colors';
-import { Feather }     from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 
 const CATEGORIA_ICON = {
-  'Alimentación':   'shopping-cart',
-  'Transporte':     'map-pin',
-  'Vivienda':       'home',
-  'Salud':          'heart',
-  'Educación':      'book',
-  'Entretenimiento':'music',
-  'Ropa':           'tag',
-  'Tecnología':     'smartphone',
-  'Mascotas':       'feather',
-  'Deudas':         'credit-card',
-  'Regalos':        'gift',
-  'Servicios':      'tool',
-  'Otros':          'more-horizontal',
+  'Alimentación': 'shopping-cart',
+  'Transporte': 'map-pin',
+  'Vivienda': 'home',
+  'Salud': 'heart',
+  'Educación': 'book',
+  'Entretenimiento': 'music',
+  'Ropa': 'tag',
+  'Tecnología': 'smartphone',
+  'Mascotas': 'feather',
+  'Deudas': 'credit-card',
+  'Regalos': 'gift',
+  'Servicios': 'tool',
+  'Otros': 'more-horizontal',
 };
 
 export default function DashboardScreen({ navigation }) {
   const { usuario } = useContext(AuthContext);
-  const { balanceMes, totalIngresosMes, totalGastosMes, movimientosRecientes } = useFinanz();
+  const {
+    balanceMes,
+    totalIngresosMes,
+    totalGastosMes,
+    movimientosRecientes,
+    productos,
+    deudas
+  } = useFinanz();
 
   const userName = usuario?.nombre || 'Juan Pérez';
-  
+
   // ✅ CORRECCIÓN 1: Definir la variable initials antes de usarla
   const initials = userName
     .split(' ')
@@ -39,10 +46,13 @@ export default function DashboardScreen({ navigation }) {
     .toUpperCase()
     .substring(0, 2);
 
-  const balance    = balanceMes();
-  const ingresos   = totalIngresosMes();
-  const gastos     = totalGastosMes();
-  const recientes  = movimientosRecientes();
+  const balance = balanceMes();
+  const ingresos = totalIngresosMes();
+  const gastos = totalGastosMes();
+  const recientes = movimientosRecientes();
+
+  const sinProductos = !productos || productos.length === 0;
+  const sinMovimientos = ingresos === 0 && gastos === 0;
 
   const fmt = (n) => n.toLocaleString('es-CO');
 
@@ -58,7 +68,7 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.userNameText}>{userName}</Text>
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.profileCircle}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('Perfil')}
@@ -68,7 +78,31 @@ export default function DashboardScreen({ navigation }) {
         </View>
       </View>
 
+
       <View style={styles.content}>
+
+        {/*ESTADO INICIAL USUARIO */}
+        {sinProductos && (
+          <View style={styles.emptyMainCard}>
+            <Feather name="credit-card" size={40} color={COLORS.primary} />
+
+            <Text style={styles.emptyMainTitle}>
+              Empieza organizando tu dinero 
+            </Text>
+
+            <Text style={styles.emptyMainText}>
+              Registra tus cuentas o tarjetas para llevar un mejor control de tu dinero
+            </Text>
+
+            <TouchableOpacity
+              style={styles.mainActionBtn}
+              onPress={() => navigation.navigate('Productos')}
+            >
+              <Text style={styles.mainActionText}>Crear mis productos</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* ── Balance ── */}
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>BALANCE GENERAL</Text>
@@ -96,9 +130,44 @@ export default function DashboardScreen({ navigation }) {
           </View>
           <Text style={styles.balanceHelper}>
             {balance === 0
-              ? 'Registra tu primer movimiento para ver tu balance'
-              : 'Balance actualizado de este mes'}
+              ? (sinProductos
+                ? 'Primero crea tus productos para empezar'
+                : 'Registra ingresos o gastos para ver tu balance')
+              : 'Balance actualizado con tus movimientos'}
           </Text>
+          {deudas.length > 0 && (
+            <Text style={styles.balanceExtra}>
+              Tienes ${fmt(
+                deudas.reduce((acc, d) => acc + (d.monto - (d.montoPagado || 0)), 0)
+              )} en deudas pendientes
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('Registrar')}
+          >
+            <Feather name="plus-circle" size={20} color={COLORS.primary} />
+            <Text style={styles.actionText}>Registrar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('Productos')}
+          >
+            <Feather name="credit-card" size={20} color={COLORS.primary} />
+            <Text style={styles.actionText}>Productos</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('Deudas')}
+          >
+            <Feather name="dollar-sign" size={20} color={COLORS.primary} />
+            <Text style={styles.actionText}>Deudas</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Recordatorios ── */}
@@ -120,13 +189,13 @@ export default function DashboardScreen({ navigation }) {
             </View>
           ) : (
             recientes.map((mov) => {
-              const esIngreso  = mov.tipo === 'ingreso';
-              const iconName   = esIngreso
+              const esIngreso = mov.tipo === 'ingreso';
+              const iconName = esIngreso
                 ? 'arrow-up-circle'
                 : CATEGORIA_ICON[mov.categoria?.replace(/^[\S]+\s/, '')] || 'arrow-down-circle';
-              const iconColor  = esIngreso ? COLORS.secondary : COLORS.primary;
-              const etiqueta   = esIngreso ? (mov.motivo || 'Ingreso') : (mov.categoria || 'Gasto');
-              const signo      = esIngreso ? '+' : '-';
+              const iconColor = esIngreso ? COLORS.secondary : COLORS.primary;
+              const etiqueta = esIngreso ? (mov.motivo || 'Ingreso') : (mov.categoria || 'Gasto');
+              const signo = esIngreso ? '+' : '-';
               const montoColor = esIngreso ? COLORS.secondary : COLORS.danger;
 
               return (
@@ -166,7 +235,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  welcomeText:  { color: COLORS.white, fontSize: 14, opacity: 0.8 },
+  welcomeText: { color: COLORS.white, fontSize: 14, opacity: 0.8 },
   userNameText: { color: COLORS.white, fontSize: SIZES.title, fontWeight: 'bold' },
   profileCircle: {
     width: 50, height: 50, borderRadius: 25,
@@ -200,7 +269,7 @@ const styles = StyleSheet.create({
     marginBottom: 10, letterSpacing: 0.5,
   },
   balanceValueRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 14 },
-  balanceCurrency:  { fontSize: 22, color: COLORS.textPrimary },
+  balanceCurrency: { fontSize: 22, color: COLORS.textPrimary },
   balanceValueText: { fontSize: 36, fontWeight: 'bold' },
   balanceSubRow: {
     flexDirection: 'row', justifyContent: 'space-between',
@@ -230,8 +299,69 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, justifyContent: 'center',
     alignItems: 'center', marginRight: 12,
   },
-  movInfo:    { flex: 1 },
+  movInfo: { flex: 1 },
   movNombre: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-  movFecha:  { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
-  movMonto:  { fontSize: 14, fontWeight: 'bold' },
+  movFecha: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  movMonto: { fontSize: 14, fontWeight: 'bold' },
+  emptyMainCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  emptyMainTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginTop: 12,
+  },
+
+  emptyMainText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+  },
+
+  mainActionBtn: {
+    marginTop: 16,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+
+  mainActionText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  balanceExtra: {
+    fontSize: 12,
+    color: COLORS.primary,
+    marginTop: 6,
+    fontWeight: '500',
+  },
+
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+
+  actionBtn: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    marginHorizontal: 4,
+    borderRadius: 12,
+  },
+
+  actionText: {
+    fontSize: 12,
+    marginTop: 6,
+    color: COLORS.textPrimary,
+  },
 });

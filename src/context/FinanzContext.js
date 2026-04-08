@@ -257,12 +257,18 @@ export const FinanzProvider = ({ children }) => {
   };
 
   const agregarIngreso = (ingreso) => {
-    const nuevo = { ...ingreso, id: Date.now().toString(), creadoEn: new Date().toISOString() };
-    setIngresos((prev) => [nuevo, ...prev]);
-    //SUMAR SALDO AL PRODUCTO
-    if (ingreso.productoId) {
-      const monto = parseFloat(ingreso.monto || 0);
+    const nuevo = {
+      ...ingreso,
+      id: Date.now().toString(),
+      creadoEn: new Date().toISOString()
+    };
 
+    const monto = parseFloat(ingreso.monto || 0); //AQUÍ SE DEFINE
+
+    setIngresos((prev) => [nuevo, ...prev]);
+
+    // SUMAR SALDO AL PRODUCTO
+    if (ingreso.productoId) {
       setProductos(prev =>
         prev.map(p =>
           p.id === ingreso.productoId
@@ -270,6 +276,19 @@ export const FinanzProvider = ({ children }) => {
             : p
         )
       );
+    } else {
+      // fallback: efectivo
+      const efectivo = productos.find(p => p.tipo === 'efectivo');
+
+      if (efectivo) {
+        setProductos(prev =>
+          prev.map(p =>
+            p.id === efectivo.id
+              ? { ...p, saldoActual: (p.saldoActual || 0) + monto }
+              : p
+          )
+        );
+      }
     }
 
     return nuevo;
@@ -426,7 +445,11 @@ export const FinanzProvider = ({ children }) => {
       .reduce((acc, i) => acc + parseFloat(i.monto || 0), 0);
   };
 
-  const balanceMes = () => totalIngresosMes() - totalGastosMes();
+  const balanceMes = () => {
+    if (!productos || productos.length === 0) return 0;
+
+    return productos.reduce((acc, p) => acc + (p.saldoActual || 0), 0);
+  };
 
   const movimientosRecientes = () => {
     const todosGastos = gastos.map((g) => ({ ...g, tipo: 'gasto' }));
