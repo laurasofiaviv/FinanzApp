@@ -1,3 +1,5 @@
+//FinanzContext.js
+// FinanzContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
 
@@ -7,16 +9,15 @@ export const FinanzProvider = ({ children }) => {
   const [gastos, setGastos] = useState([]);
   const [ingresos, setIngresos] = useState([]);
   const [deudas, setDeudas] = useState([]);
+  const [productos, setProductos] = useState([]); // tarjetas y cuentas
 
   // ── MOTOR DE RECURRENCIA ──────────────────────────────────────────────────
-  // Se ejecuta al cargar la app para revisar si hay gastos pendientes
   useEffect(() => {
-    // Damos un pequeño respiro para que el estado se inicialice
     const timer = setTimeout(() => {
       procesarGastosRecurrentes();
     }, 1500);
     return () => clearTimeout(timer);
-  }, [gastos.length]); // Solo re-evaluamos si cambia la cantidad de gastos
+  }, [gastos.length]);
 
   const procesarGastosRecurrentes = () => {
     setGastos((prev) => {
@@ -25,99 +26,252 @@ export const FinanzProvider = ({ children }) => {
       let huboCambios = false;
 
       const actualizados = prev.map((g) => {
-        // Buscamos gastos que tengan configuración recurrente y una fecha próxima
         if (g.recurrente && g.recurrente.proximoCobro) {
           const fechaCobro = new Date(g.recurrente.proximoCobro);
-          
           if (hoy >= fechaCobro) {
             huboCambios = true;
-            
-            // 1. Calculamos la nueva fecha de cobro para el gasto "padre"
             const siguienteFecha = new Date(fechaCobro);
             if (g.recurrente.frecuencia === 'mensual') {
               siguienteFecha.setMonth(siguienteFecha.getMonth() + 1);
             } else {
               siguienteFecha.setDate(siguienteFecha.getDate() + 15);
             }
-
-            // 2. Dependiendo del modo, actuamos
             if (g.recurrente.modo === 'auto') {
-              // Lo registramos silenciosamente
               nuevosAuto.push({
                 ...g,
                 id: Date.now().toString() + Math.random().toString().substring(2, 6),
                 creadoEn: hoy.toISOString(),
                 fecha: hoy.toISOString().split('T')[0],
-                recurrente: null // El hijo ya no es recurrente, solo es un registro normal
+                recurrente: null,
               });
             } else if (g.recurrente.modo === 'preguntar') {
-              // Lanzamos la notificación
               setTimeout(() => {
                 Alert.alert(
-                  "Gasto Recurrente Pendiente",
+                  'Gasto Recurrente Pendiente',
                   `¿Deseas registrar tu gasto de ${g.categoria} por ${g.montoDisplay}?`,
                   [
-                    { text: "Más tarde", style: "cancel" },
-                    { 
-                      text: "Registrar", 
-                      onPress: () => agregarGasto({ ...g, recurrente: null, fecha: new Date().toISOString().split('T')[0] }) 
-                    }
+                    { text: 'Más tarde', style: 'cancel' },
+                    {
+                      text: 'Registrar',
+                      onPress: () =>
+                        agregarGasto({ ...g, recurrente: null, fecha: new Date().toISOString().split('T')[0] }),
+                    },
                   ]
                 );
               }, 500);
             }
-
-            // Actualizamos el padre con la nueva fecha
             return {
               ...g,
-              recurrente: { ...g.recurrente, proximoCobro: siguienteFecha.toISOString() }
+              recurrente: { ...g.recurrente, proximoCobro: siguienteFecha.toISOString() },
             };
           }
         }
         return g;
       });
 
-      // Si se generaron gastos automáticos, los unimos al historial
-      if (huboCambios) {
-        return [...nuevosAuto, ...actualizados];
-      }
+      if (huboCambios) return [...nuevosAuto, ...actualizados];
       return prev;
     });
   };
 
+  // ── PRODUCTOS (TARJETAS Y CUENTAS) ───────────────────────────────────────
+
+  /**
+   * Agrega un producto bancario.
+   * Para tarjetas de crédito crea automáticamente una deuda vinculada.
+   *
+   * @param {object} producto
+   *   tipo:          'credito' | 'debito' | 'efectivo'
+   *   nombre:        string   – nombre personalizado
+   *   franquicia:    'visa' | 'mastercard' | 'amex' | null
+   *   cupoTotal:     number   – solo crédito
+   *   diaCorte:      number   – solo crédito
+   *   diaPago:       number   – solo crédito
+   *   banco:         string   – opcional
+   */
+  const agregarProducto = (producto) => {
+    const id = Date.now().toString();
+    const nuevo = {
+      ...producto,
+      id,
+      creadoEn: new Date().toISOString(),
+      saldoUsado: 0,
+      deudaId: null,
+      saldoActual: producto.saldoActual || 0, // 👈 AGREGA ESTO
+    };
+
+    // Si es tarjeta de crédito, crea una deuda espejo automáticamente
+    if (producto.tipo === 'credito') {
+      const deudaId = id + '_deuda';
+      nuevo.deudaId = deudaId;
+
+      const deudaEspejo = {
+        id: deudaId,
+        productoId: id,
+        tipo: 'Tarjeta de crédito',
+        descripcion: producto.nombre,
+        monto: 0,             // se actualiza con cada gasto vinculado
+        cupoTotal: producto.cupoTotal || 0,
+        diaCorte: producto.diaCorte,
+        diaPago: producto.diaPago,
+        franquicia: producto.franquicia,
+        montoPagado: 0,
+        cuotasPagadas: 0,
+        cuotas: 1,
+        esEspejo: true,       // flag para distinguirla de deudas manuales
+        creadoEn: new Date().toISOString(),
+        estado: 'pendiente',
+        fechaVencimiento: proximaFechaPago(producto.diaPago),
+      };
+
+      setDeudas((prev) => [deudaEspejo, ...prev]);
+    }
+
+    setProductos((prev) => [nuevo, ...prev]);
+    return nuevo;
+  };
+
+  const eliminarProducto = (id) => {
+    const prod = productos.find((p) => p.id === id);
+    if (prod?.deudaId) {
+      setDeudas((prev) => prev.filter((d) => d.id !== prod.deudaId));
+    }
+    setProductos((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  /**
+   * Actualiza el saldo usado de una tarjeta de crédito
+   * y sincroniza el monto de la deuda espejo.
+   */
+  const cargarGastoATarjeta = (productoId, monto) => {
+    const producto = productos.find((p) => p.id === productoId);
+
+    if (!producto) return;
+
+    // VALIDAR CUPO
+    if ((producto.saldoUsado || 0) + monto > producto.cupoTotal) {
+      Alert.alert(
+        'Cupo excedido',
+        `Estás superando el límite de ${producto.nombre}`
+      );
+      return; // CANCELA el registro
+    }
+
+    // ACTUALIZAR SALDO USADO
+    setProductos((prev) =>
+      prev.map((p) => {
+        if (p.id !== productoId) return p;
+        return { ...p, saldoUsado: (p.saldoUsado || 0) + monto };
+      })
+    );
+
+    // SINCRONIZAR DEUDA
+    if (producto?.deudaId) {
+      setDeudas((prev) =>
+        prev.map((d) => {
+          if (d.id !== producto.deudaId) return d;
+          const nuevoMonto = (d.monto || 0) + monto;
+          return { ...d, monto: nuevoMonto };
+        })
+      );
+    }
+  };
+
   // ── FUNCIONES DE GASTOS E INGRESOS ───────────────────────────────────────
   const agregarGasto = (gasto) => {
+    const monto = parseFloat(gasto.monto || 0);
+
+    // 🔴 VALIDAR ANTES DE TODO
+    if (gasto.productoId) {
+      const producto = productos.find(p => p.id === gasto.productoId);
+
+      if (producto?.tipo === 'credito') {
+        // VALIDAR CUPO
+        if ((producto.saldoUsado || 0) + monto > producto.cupoTotal) {
+          Alert.alert('Cupo excedido', 'Estás superando el límite de tu tarjeta');
+          return null; // 🚫 NO guarda
+        }
+
+      } else {
+        // VALIDAR SALDO
+        if ((producto.saldoActual || 0) < monto) {
+          Alert.alert(
+            'Saldo insuficiente',
+            `No tienes suficiente dinero en ${producto.nombre}`
+          );
+          return null; // 🚫 NO guarda
+        }
+      }
+    }
+
+    // ✅ SOLO SI PASA VALIDACIONES
+
     let recurrenteData = gasto.recurrente;
-    
-    // Si el usuario activó la recurrencia, calculamos cuándo será el primer cobro automático
+
     if (recurrenteData) {
-      // Usamos la fecha que eligió en el calendario o la de hoy
-      const fechaBase = gasto.fecha ? new Date(gasto.fecha.split('/').reverse().join('-')) : new Date();
+      const fechaBase = gasto.fecha
+        ? new Date(gasto.fecha.split('/').reverse().join('-'))
+        : new Date();
+
       const proximo = new Date(fechaBase);
-      
+
       if (recurrenteData.frecuencia === 'mensual') {
         proximo.setMonth(proximo.getMonth() + 1);
       } else {
         proximo.setDate(proximo.getDate() + 15);
       }
-      // Guardamos la fecha calculada dentro del objeto recurrente
-      recurrenteData = { ...recurrenteData, proximoCobro: proximo.toISOString() };
+
+      recurrenteData = {
+        ...recurrenteData,
+        proximoCobro: proximo.toISOString()
+      };
     }
 
-    const nuevo = { 
-      ...gasto, 
-      id: Date.now().toString(), 
+    const nuevo = {
+      ...gasto,
+      id: Date.now().toString(),
       creadoEn: new Date().toISOString(),
-      recurrente: recurrenteData
+      recurrente: recurrenteData,
     };
-    
+
     setGastos((prev) => [nuevo, ...prev]);
+
+    // 🔄 ACTUALIZAR PRODUCTO
+    if (gasto.productoId) {
+      const producto = productos.find(p => p.id === gasto.productoId);
+
+      if (producto?.tipo === 'credito') {
+        cargarGastoATarjeta(producto.id, monto);
+      } else {
+        setProductos(prev =>
+          prev.map(p =>
+            p.id === producto.id
+              ? { ...p, saldoActual: (p.saldoActual || 0) - monto }
+              : p
+          )
+        );
+      }
+    }
+
     return nuevo;
   };
 
   const agregarIngreso = (ingreso) => {
     const nuevo = { ...ingreso, id: Date.now().toString(), creadoEn: new Date().toISOString() };
     setIngresos((prev) => [nuevo, ...prev]);
+    //SUMAR SALDO AL PRODUCTO
+    if (ingreso.productoId) {
+      const monto = parseFloat(ingreso.monto || 0);
+
+      setProductos(prev =>
+        prev.map(p =>
+          p.id === ingreso.productoId
+            ? { ...p, saldoActual: (p.saldoActual || 0) + monto }
+            : p
+        )
+      );
+    }
+
     return nuevo;
   };
 
@@ -129,45 +283,125 @@ export const FinanzProvider = ({ children }) => {
       creadoEn: new Date().toISOString(),
       montoPagado: 0,
       cuotasPagadas: 0,
-      estado: 'pendiente', // pendiente | pagada | vencida
+      estado: 'pendiente',
     };
     setDeudas((prev) => [nuevo, ...prev]);
     return nuevo;
   };
 
   const marcarDeudaPagada = (id) => {
-    setDeudas((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, estado: 'pagada' } : d))
-    );
+    setDeudas((prev) => prev.map((d) => (d.id === id ? { ...d, estado: 'pagada' } : d)));
+    // Si es espejo de tarjeta, resetear saldo usado
+    const deuda = deudas.find((d) => d.id === id);
+    if (deuda?.productoId) {
+      setProductos((prev) =>
+        prev.map((p) => (p.id === deuda.productoId ? { ...p, saldoUsado: 0 } : p))
+      );
+    }
   };
 
-  const pagarCuota = (id) => {
-    setDeudas((prev) =>
-      prev.map((d) => {
-        if (d.id !== id) return d;
+  const pagarCuota = (deudaId, productoPagoId) => {
+    // ─────────────────────────────────────────
+    // 1. BUSCAR DATOS
+    // ─────────────────────────────────────────
+    const deuda = deudas.find(d => d.id === deudaId);
+    const producto = productos.find(p => p.id === productoPagoId);
 
-        // Si no tiene cuotas → pago total
+    if (!deuda || !producto) {
+      Alert.alert('Error', 'No se encontró la deuda o la cuenta');
+      return;
+    }
+
+    // ─────────────────────────────────────────
+    // 2. CALCULAR MONTO A PAGAR (SIN MUTAR)
+    // ─────────────────────────────────────────
+    let montoPagadoAhora = 0;
+
+    if (!deuda.cuotas || deuda.cuotas <= 1) {
+      montoPagadoAhora = deuda.monto - (deuda.montoPagado || 0);
+    } else {
+      montoPagadoAhora = deuda.monto / deuda.cuotas;
+    }
+
+    // VALIDAR MONTO
+    if (montoPagadoAhora <= 0) {
+      Alert.alert('Error', 'No hay nada pendiente por pagar');
+      return;
+    }
+
+    // ─────────────────────────────────────────
+    // 3. VALIDAR SALDO (CRÍTICO)
+    // ─────────────────────────────────────────
+    if ((producto.saldoActual || 0) < montoPagadoAhora) {
+      Alert.alert(
+        'Saldo insuficiente',
+        `No tienes suficiente dinero en ${producto.nombre}`
+      );
+      return; // 🚫 CANCELA TODO
+    }
+
+    // ─────────────────────────────────────────
+    // 4. EJECUTAR TRANSACCIÓN
+    // ─────────────────────────────────────────
+
+    // 4.1 ACTUALIZAR DEUDA
+    setDeudas(prev =>
+      prev.map(d => {
+        if (d.id !== deudaId) return d;
+
         if (!d.cuotas || d.cuotas <= 1) {
           return {
             ...d,
             montoPagado: d.monto,
-            estado: 'pagada',
+            estado: 'pagada'
           };
         }
 
-        // Pago por cuotas
         const valorCuota = d.monto / d.cuotas;
         const nuevasCuotasPagadas = (d.cuotasPagadas || 0) + 1;
         const nuevoMontoPagado = (d.montoPagado || 0) + valorCuota;
-        const deudaPagada = nuevasCuotasPagadas >= d.cuotas;
 
         return {
           ...d,
           cuotasPagadas: nuevasCuotasPagadas,
           montoPagado: nuevoMontoPagado,
-          estado: deudaPagada ? 'pagada' : 'pendiente',
+          estado: nuevasCuotasPagadas >= d.cuotas ? 'pagada' : 'pendiente'
         };
       })
+    );
+
+    // 4.2 DESCONTAR SALDO DE CUENTA
+    setProductos(prev =>
+      prev.map(p =>
+        p.id === productoPagoId
+          ? { ...p, saldoActual: (p.saldoActual || 0) - montoPagadoAhora }
+          : p
+      )
+    );
+
+    // 4.3 SI ES DEUDA DE TARJETA → LIBERAR CUPO
+    if (deuda.productoId) {
+      setProductos(prev =>
+        prev.map(p => {
+          if (p.id !== deuda.productoId) return p;
+
+          return {
+            ...p,
+            saldoUsado: Math.max(
+              (p.saldoUsado || 0) - montoPagadoAhora,
+              0
+            )
+          };
+        })
+      );
+    }
+
+    // ─────────────────────────────────────────
+    // 5. FEEDBACK
+    // ─────────────────────────────────────────
+    Alert.alert(
+      'Pago exitoso',
+      `Pagaste $${montoPagadoAhora.toLocaleString('es-CO')}`
     );
   };
 
@@ -202,21 +436,30 @@ export const FinanzProvider = ({ children }) => {
       .slice(0, 5);
   };
 
+  // ── HELPERS ──────────────────────────────────────────────────────────────
+  /** Devuelve tarjetas de crédito activas (para selector al registrar gasto) */
+  const tarjetasCredito = () =>
+    productos.filter((p) => p.tipo === 'credito');
+
   return (
     <FinanzContext.Provider
       value={{
         gastos,
         ingresos,
         deudas,
+        productos,
         agregarGasto,
         agregarIngreso,
         agregarDeuda,
+        agregarProducto,
+        eliminarProducto,
         pagarCuota,
         marcarDeudaPagada,
         totalGastosMes,
         totalIngresosMes,
         balanceMes,
         movimientosRecientes,
+        tarjetasCredito,
       }}
     >
       {children}
@@ -225,3 +468,13 @@ export const FinanzProvider = ({ children }) => {
 };
 
 export const useFinanz = () => useContext(FinanzContext);
+
+// ── UTIL EXPORTADA ────────────────────────────────────────────────────────
+/** Calcula la próxima fecha de pago dado el día del mes */
+export function proximaFechaPago(diaPago) {
+  if (!diaPago) return '';
+  const hoy = new Date();
+  const fecha = new Date(hoy.getFullYear(), hoy.getMonth(), diaPago);
+  if (fecha <= hoy) fecha.setMonth(fecha.getMonth() + 1);
+  return fecha.toISOString().split('T')[0].split('-').reverse().join('/');
+}

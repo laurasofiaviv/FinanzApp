@@ -1,4 +1,6 @@
+//DebtScreen.js
 import React from 'react';
+import { Modal } from 'react-native';
 import {
   View,
   Text,
@@ -6,39 +8,44 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  Image,
+  Platform
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useFinanz } from '../context/FinanzContext';
 
-export default function DebtScreen() {
-  const { deudas, pagarCuota } = useFinanz();
+const ICONS = {
+  banco: require('../../assets/banco.png'),
+  efectivo: require('../../assets/efectivo.png'),
+  tarjeta: require('../../assets/tarjetacredito.png'),
+};
 
+const getIcon = (tipo) => {
+  if (!tipo) return ICONS.efectivo;
+  const t = tipo.toLowerCase();
+  if (t.includes('tarjeta')) return ICONS.tarjeta;
+  if (t.includes('préstamo') || t.includes('banco')) return ICONS.banco;
+  return ICONS.efectivo;
+};
+
+export default function DebtScreen({ navigation }) {
+  const { deudas, pagarCuota, productos } = useFinanz();
   const hoy = new Date();
+  const [modalVisible, setModalVisible] = React.useState(false);
+  const [deudaSeleccionada, setDeudaSeleccionada] = React.useState(null);
 
   const deudasProcesadas = deudas.map((d) => {
     const montoPagado = d.montoPagado || 0;
     const cuotas = parseInt(d.cuotas) || 0;
     const cuotasPagadas = d.cuotasPagadas || 0;
-
     const fechaBase = d.fechaVencimiento || d.fecha;
 
-    if (!fechaBase) {
-      return {
-        ...d,
-        estado: 'pendiente',
-        diffDays: 999,
-        restante: d.monto,
-        progreso: 0,
-      };
-    }
+    if (!fechaBase) return { ...d, estado: 'pendiente', diffDays: 999, restante: d.monto, progreso: 0 };
 
     const [dia, mes, año] = fechaBase.split('/');
     const fechaVence = new Date(año, mes - 1, dia);
-
-    const diffDays = Math.ceil(
-      (fechaVence - hoy) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.ceil((fechaVence - hoy) / (1000 * 60 * 60 * 24));
 
     let estado = 'pendiente';
     if (montoPagado >= d.monto) estado = 'pagada';
@@ -49,10 +56,7 @@ export default function DebtScreen() {
       estado,
       diffDays,
       restante: d.monto - montoPagado,
-      progreso:
-        cuotas > 0
-          ? cuotasPagadas / cuotas
-          : montoPagado / d.monto,
+      progreso: cuotas > 0 ? cuotasPagadas / cuotas : montoPagado / d.monto,
     };
   });
 
@@ -60,14 +64,7 @@ export default function DebtScreen() {
     .filter((d) => d.estado !== 'pagada')
     .sort((a, b) => a.diffDays - b.diffDays);
 
-  const pagadas = deudasProcesadas.filter(
-    (d) => d.estado === 'pagada'
-  );
-
-  const totalPendiente = pendientes.reduce(
-    (acc, d) => acc + d.restante,
-    0
-  );
+  const pagadas = deudasProcesadas.filter((d) => d.estado === 'pagada');
 
   const getUrgencyColor = (diffDays) => {
     if (diffDays < 0) return COLORS.danger;
@@ -75,261 +72,397 @@ export default function DebtScreen() {
     return COLORS.textLight;
   };
 
-  const getUrgencyText = (diffDays) => {
-    if (diffDays < 0) return 'Vencida';
-    if (diffDays === 0) return 'Hoy';
-    if (diffDays <= 3) return `En ${diffDays} días`;
-    return 'A tiempo';
-  };
-
   return (
-    <ScrollView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <StatusBar barStyle="light-content" />
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mis Deudas</Text>
-        <Text style={styles.headerSub}>
-          {pendientes.length} pendientes
-        </Text>
-      </View>
+        {/* HEADER (igual Dashboard) */}
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.welcome}>Bienvenido de nuevo</Text>
+              <Text style={styles.headerName}>Juan Pérez</Text>
+            </View>
 
-      <View style={styles.content}>
-        {pendientes.length > 0 && (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>
-              TOTAL PENDIENTE
-            </Text>
-            <Text style={styles.summaryAmount}>
-              ${totalPendiente.toLocaleString('es-CO')}
-            </Text>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>JP</Text>
+            </View>
           </View>
-        )}
+        </View>
 
-        {pendientes.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Feather
-              name="check-circle"
-              size={40}
-              color={COLORS.secondary}
-            />
-            <Text style={styles.emptyTitle}>
-              ¡Todo al día!
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.sectionTitle}>
-              PENDIENTES
-            </Text>
+        {/* CONTENT */}
+        <View style={styles.content}>
+          <View style={styles.mainCard}>
+            <Text style={styles.cardTitle}>Mis Deudas</Text>
+            <Text style={styles.cardSub}>{pendientes.length} pendientes</Text>
+
+            <TouchableOpacity
+              style={styles.prodBtn}
+              onPress={() => navigation.navigate('Productos')}
+            >
+              <Feather name="credit-card" size={18} color={COLORS.textPrimary} />
+              <Text style={styles.prodBtnText}>Mis productos</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.sectionTitle}>PENDIENTES</Text>
 
             {pendientes.map((deuda) => {
-              const color = getUrgencyColor(
-                deuda.diffDays
-              );
+              const color = getUrgencyColor(deuda.diffDays);
 
               return (
-                <View
-                  key={deuda.id}
-                  style={styles.debtCard}
-                >
-                  <View style={styles.debtLeft}>
-                    <Text style={styles.debtTipo}>
-                      {deuda.tipo}
-                    </Text>
+                <View key={deuda.id} style={styles.debtCard}>
+                  <Image source={getIcon(deuda.tipo)} style={styles.icon} />
 
-                    {deuda.descripcion && (
-                      <Text style={styles.debtDesc}>
-                        {deuda.descripcion}
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.debtTipo}>{deuda.tipo}</Text>
+                      <Text style={styles.debtMonto}>
+                        ${deuda.restante.toLocaleString('es-CO')}
                       </Text>
-                    )}
+                    </View>
+
+                    <Text style={styles.debtDesc}>
+                      {deuda.descripcion || 'Sin descripción'}
+                    </Text>
 
                     <View style={styles.progressBar}>
                       <View
                         style={[
                           styles.progressFill,
-                          {
-                            width: `${
-                              deuda.progreso * 100
-                            }%`,
-                          },
+                          { width: `${deuda.progreso * 100}%` },
                         ]}
                       />
                     </View>
 
-                    <Text style={styles.progressText}>
-                      {deuda.cuotas
-                        ? `${deuda.cuotasPagadas || 0}/${
-                            deuda.cuotas
-                          } cuotas`
-                        : `${Math.round(
-                            deuda.progreso * 100
-                          )}% pagado`}
-                    </Text>
+                    <View style={styles.rowBetween}>
+                      <View>
+                        <Text style={styles.progressText}>
+                          {deuda.cuotas
+                            ? `${deuda.cuotasPagadas || 0}/${deuda.cuotas} cuotas`
+                            : `${Math.round(deuda.progreso * 100)}%`}
+                        </Text>
 
-                    <Text
-                      style={[
-                        styles.debtFecha,
-                        { color },
-                      ]}
-                    >
-                      {getUrgencyText(
-                        deuda.diffDays
-                      )}
-                    </Text>
-                  </View>
+                        <Text style={[styles.estadoText, { color }]}>
+                          {deuda.diffDays < 0 ? 'Vencida' : 'A tiempo'}
+                        </Text>
+                      </View>
 
-                  <View style={styles.debtRight}>
-                    <Text style={styles.debtMonto}>
-                      $
-                      {deuda.restante.toLocaleString(
-                        'es-CO'
-                      )}
-                    </Text>
-
-                    <TouchableOpacity
-                      style={styles.paidBtn}
-                      onPress={() =>
-                        pagarCuota(deuda.id)
-                      }
-                    >
-                      <Text
-                        style={styles.paidBtnText}
+                      <TouchableOpacity
+                        style={styles.paidBtn}
+                        onPress={() => {
+                          setDeudaSeleccionada(deuda);
+                          setModalVisible(true);
+                        }}
                       >
-                        Abonar
-                      </Text>
-                    </TouchableOpacity>
+                        <Text style={styles.paidBtnText}>Abonar</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               );
             })}
-          </>
-        )}
 
-        {pagadas.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>
-              PAGADAS
+            {pagadas.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>PAGADAS</Text>
+
+                {pagadas.map((d) => (
+                  <View key={d.id} style={styles.debtCard}>
+                    <Image source={getIcon(d.tipo)} style={[styles.icon, { opacity: 0.4 }]} />
+
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.rowBetween}>
+                        <Text style={[styles.debtTipo, { color: COLORS.textLight }]}>
+                          {d.tipo}
+                        </Text>
+                        <Text style={[styles.debtMonto, { color: COLORS.textLight }]}>
+                          ${d.monto.toLocaleString('es-CO')}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.debtDesc}>
+                        {d.descripcion || 'Pagada'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+
+            <View style={styles.footerInfo}>
+              <Feather name="trending-up" size={40} color={COLORS.secondary} />
+              <Text style={styles.footerText}>¡Todo al día!</Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* MODAL AQUÍ */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          justifyContent: 'flex-end'
+        }}>
+          <View style={{
+            backgroundColor: '#fff',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            padding: 20
+          }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>
+              Selecciona cuenta para pagar
             </Text>
-            {pagadas.map((d) => (
-              <View
-                key={d.id}
-                style={[
-                  styles.debtCard,
-                  { opacity: 0.6 },
-                ]}
-              >
-                <Text>{d.tipo}</Text>
-                <Text>
-                  $
-                  {d.monto.toLocaleString('es-CO')}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-      </View>
-    </ScrollView>
+
+            {productos.map((p) => {
+              if (!deudaSeleccionada) return null;
+
+              // calcular cuánto se va a pagar
+              let montoPago = 0;
+
+              if (!deudaSeleccionada.cuotas || deudaSeleccionada.cuotas <= 1) {
+                montoPago =
+                  deudaSeleccionada.monto -
+                  (deudaSeleccionada.montoPagado || 0);
+              } else {
+                montoPago = deudaSeleccionada.monto / deudaSeleccionada.cuotas;
+              }
+
+              const saldoInsuficiente = (p.saldoActual || 0) < montoPago;
+
+              return (
+                <TouchableOpacity
+                  key={p.id}
+                  disabled={saldoInsuficiente}
+                  style={{
+                    padding: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#eee',
+                    opacity: saldoInsuficiente ? 0.5 : 1, // efecto visual
+                  }}
+                  onPress={() => {
+                    if (saldoInsuficiente) return;
+
+                    pagarCuota(deudaSeleccionada.id, p.id);
+                    setModalVisible(false);
+                    setDeudaSeleccionada(null);
+                  }}
+                >
+                  <Text>
+                    {p.nombre} - ${p.saldoActual?.toLocaleString('es-CO')}
+                  </Text>
+
+                  {saldoInsuficiente && (
+                    <Text style={{ color: 'red', fontSize: 12 }}>
+                      Saldo insuficiente
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={{ marginTop: 10 }}
+            >
+              <Text style={{ color: 'red', textAlign: 'center' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
+
 }
 
-/* 🔥 ESTILOS (ESTO ERA LO QUE TE FALTABA) */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
+
   header: {
-    padding: 20,
+    backgroundColor: COLORS.primary,
+    paddingTop: Platform.OS === 'web' ? 40 : 70,
+    paddingHorizontal: SIZES.padding,
+    paddingBottom: 40,
+    borderBottomLeftRadius: SIZES.headerRadius,
+    borderBottomRightRadius: SIZES.headerRadius,
   },
-  headerTitle: {
-    fontSize: 24,
-    color: COLORS.text,
-    fontWeight: 'bold',
-  },
-  headerSub: {
-    color: COLORS.textLight,
-  },
-  content: {
-    padding: 20,
-  },
-  summaryCard: {
-    backgroundColor: COLORS.card,
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  summaryLabel: {
-    color: COLORS.textLight,
-  },
-  summaryAmount: {
-    fontSize: 20,
-    color: COLORS.text,
-    fontWeight: 'bold',
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    color: COLORS.textLight,
-  },
-  debtCard: {
+
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.card,
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+    alignItems: 'center',
   },
-  debtLeft: {
-    flex: 1,
+
+  welcome: {
+    color: COLORS.white,
+    fontSize: 14,
+    opacity: 0.8,
   },
-  debtRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  debtTipo: {
+
+  headerName: {
+    color: COLORS.white,
+    fontSize: SIZES.title,
     fontWeight: 'bold',
-    color: COLORS.text,
   },
-  debtDesc: {
+
+  avatarCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  avatarText: {
+    color: COLORS.white,
+    fontWeight: 'bold',
+  },
+
+  content: {
+    backgroundColor: COLORS.background,
+    marginTop: -20,
+    borderTopLeftRadius: SIZES.headerRadius,
+    borderTopRightRadius: SIZES.headerRadius,
+    paddingHorizontal: SIZES.padding,
+    paddingTop: 30,
+  },
+
+  mainCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+  },
+
+  cardSub: {
+    fontSize: 12,
     color: COLORS.textLight,
+    marginBottom: 15,
   },
+
+  prodBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+
+  prodBtnText: {
+    marginLeft: 8,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginBottom: 14,
+    letterSpacing: 0.5,
+  },
+
+  debtCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+
+  icon: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+    resizeMode: 'contain',
+  },
+
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  debtTipo: {
+    fontWeight: '600',
+    fontSize: 14,
+    color: COLORS.textPrimary,
+  },
+
   debtMonto: {
     fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 14,
+    color: COLORS.textPrimary,
   },
-  paidBtn: {
-    marginTop: 10,
-    padding: 6,
-    backgroundColor: COLORS.secondary,
-    borderRadius: 6,
-  },
-  paidBtnText: {
-    color: '#fff',
+
+  debtDesc: {
     fontSize: 12,
+    color: COLORS.textLight,
   },
+
   progressBar: {
     height: 6,
-    backgroundColor: '#ddd',
-    borderRadius: 5,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 10,
     marginVertical: 6,
   },
+
   progressFill: {
     height: 6,
     backgroundColor: COLORS.secondary,
-    borderRadius: 5,
+    borderRadius: 10,
   },
+
   progressText: {
     fontSize: 12,
     color: COLORS.textLight,
   },
-  debtFecha: {
+
+  estadoText: {
     fontSize: 12,
   },
-  emptyCard: {
-    alignItems: 'center',
-    marginTop: 50,
+
+  paidBtn: {
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  emptyTitle: {
+
+  paidBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  footerInfo: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+
+  footerText: {
+    color: COLORS.textLight,
     marginTop: 10,
-    color: COLORS.text,
+    fontWeight: '600',
   },
 });

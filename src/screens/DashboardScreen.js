@@ -1,3 +1,4 @@
+//DashboardScreen.js
 import React, { useContext } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,

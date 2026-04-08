@@ -1,4 +1,4 @@
-// VERSION REDISEÑADA - COPIA Y PEGA COMPLETA
+// RegisterGastoScreen.js
 
 import React, { useState } from 'react';
 import {

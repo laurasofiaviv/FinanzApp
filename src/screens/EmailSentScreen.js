@@ -22,7 +22,7 @@ export default function EmailSentScreen({ route, navigation }) {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.appName}>Financify</Text>
+        <Text style={styles.appName}>FinanzApp</Text>
       </View>
 
       {/* Ícono de éxito — igual que RegisterSuccess */}
