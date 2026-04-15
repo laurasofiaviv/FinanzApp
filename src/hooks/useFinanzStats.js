@@ -1,3 +1,4 @@
+//hooks/useFinanzStats.js
 import { useFinanz } from "../context/FinanzContext";
 
 export const useFinanzStats = () => {

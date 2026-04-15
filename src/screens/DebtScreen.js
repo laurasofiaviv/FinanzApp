@@ -1,115 +1,28 @@
-// DebtScreen.js
-import React, { useState } from 'react';
+// screens/DebtScreen.js
+import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Platform, Modal, TextInput, FlatList, Switch, Alert,
+  StatusBar, Platform, Modal, TextInput, FlatList,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
-import { useFinanz } from '../context/FinanzContext';
+import { useDebt, TIPOS_CONFIG, TIPOS_LIST } from '../hooks/useDebt';
 
-// ── HELPERS ───────────────────────────────────────────────────────────────
-function fmt(n) {
-  if (!n && n !== 0) return '0';
-  return Number(n).toLocaleString('es-CO');
-}
-function parsear(t) {
-  const d = String(t).replace(/[^0-9]/g, '');
-  return d === '' ? '' : parseInt(d, 10);
-}
-function hoyISO() {
-  return new Date().toISOString().split('T')[0];
-}
-function isoADisplay(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
+// ══════════════════════════════════════════════════════════════════════════
+// COMPONENTES PUROS DE UI
+// ══════════════════════════════════════════════════════════════════════════
 
-// ── CONFIGURACIÓN POR TIPO ────────────────────────────────────────────────
-const TIPOS_CONFIG = {
-  'Tarjeta de crédito': {
-    icon: 'credit-card',
-    color: COLORS.primary,
-    campos: ['tarjeta', 'interes', 'pagoMinimo'],
-    desc: 'Interés rotativo mensual',
-  },
-  'Préstamo bancario': {
-    icon: 'home',
-    color: '#8E44AD',
-    campos: ['interes', 'cuotas', 'fechaInicio'],
-    desc: 'Cuota fija calculada',
-  },
-  'Deuda personal': {
-    icon: 'user',
-    color: '#E67E22',
-    campos: ['interes', 'fechaVencimiento'],
-    desc: 'Sin interés o configurable',
-  },
-  'Arriendo / hipoteca': {
-    icon: 'home',
-    color: '#27AE60',
-    campos: ['valorMensual', 'diaPago'],
-    desc: 'Pago periódico fijo',
-  },
-  'Servicio / suscripción': {
-    icon: 'refresh-cw',
-    color: '#E74C3C',
-    campos: ['diaPago'],
-    desc: 'Recurrente sin interés',
-  },
-  'Otro': {
-    icon: 'more-horizontal',
-    color: COLORS.textSecondary,
-    campos: ['interes', 'fechaVencimiento'],
-    desc: 'Configurable',
-  },
-};
-
-const TIPOS_LIST = Object.keys(TIPOS_CONFIG);
-
-// ── CÁLCULO FINANCIERO ────────────────────────────────────────────────────
-function calcularResumen(tipo, form) {
-  const monto = parseFloat(form.montoNum) || 0;
-  const interes = parseFloat(form.interes) || 0;
-  const cuotas = parseInt(form.cuotas) || 1;
-
-  if (tipo === 'Tarjeta de crédito') {
-    const nuevoSaldo = monto * (1 + interes / 100);
-    const pagoMin = parseFloat(form.pagoMinimo) || monto * 0.05;
-    return {
-      label: 'Saldo próximo mes',
-      valor: `$${fmt(Math.round(nuevoSaldo))}`,
-      extra: `Pago mínimo: $${fmt(Math.round(pagoMin))}`,
-    };
-  }
-  if (tipo === 'Préstamo bancario') {
-    if (interes > 0 && cuotas > 0) {
-      const r = interes / 100;
-      const cuota = monto * (r * Math.pow(1 + r, cuotas)) / (Math.pow(1 + r, cuotas) - 1);
-      return {
-        label: 'Cuota mensual estimada',
-        valor: `$${fmt(Math.round(cuota))}`,
-        extra: `Total a pagar: $${fmt(Math.round(cuota * cuotas))}`,
-      };
-    }
-    return null;
-  }
-  if (tipo === 'Arriendo / hipoteca') {
-    return {
-      label: 'Pago mensual',
-      valor: `$${fmt(monto)}`,
-      extra: `Día de pago: ${form.diaPago || '—'}`,
-    };
-  }
-  return null;
-}
-
-// ── FORMULARIO DINÁMICO ───────────────────────────────────────────────────
-function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
+// ── FormularioDinamico ────────────────────────────────────────────────────
+function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parsear }) {
   const config = TIPOS_CONFIG[tipo];
   if (!config) return null;
   const campos = config.campos;
+
+  const handleMonto = (v) => {
+    const n = parsear(v);
+    setField('montoNum', n);
+    setField('montoDisplay', n === '' ? '' : fmt(n));
+  };
 
   return (
     <View>
@@ -125,15 +38,15 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
           ) : (
             tarjetas.map((t) => {
               const cupoLibre = (t.cupoTotal || 0) - (t.saldoUsado || 0);
-              const activa = form.tarjetaId === t.id;
+              const activa    = form.tarjetaId === t.id;
               return (
                 <TouchableOpacity
                   key={t.id}
                   style={[styles.tarjetaItem, activa && styles.tarjetaItemActive]}
                   onPress={() => {
-                    setField('tarjetaId', t.id);
-                    setField('tarjetaNombre', t.nombre);
-                    setField('cupoDisponible', cupoLibre);
+                    setField('tarjetaId',       t.id);
+                    setField('tarjetaNombre',   t.nombre);
+                    setField('cupoDisponible',  cupoLibre);
                   }}
                 >
                   <View style={styles.tarjetaLeft}>
@@ -150,7 +63,6 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
               );
             })
           )}
-          {/* Advertencia de cupo */}
           {form.tarjetaId && form.montoNum && form.cupoDisponible < form.montoNum && (
             <View style={[styles.alertBox, { borderColor: COLORS.danger, backgroundColor: '#FFF0F0' }]}>
               <Feather name="alert-triangle" size={14} color={COLORS.danger} />
@@ -166,7 +78,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
       {campos.includes('interes') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>
-            Tasa de interés mensual (%) {tipo === 'Deuda personal' ? '— opcional' : ''}
+            Tasa de interés mensual (%){tipo === 'Deuda personal' ? ' — opcional' : ''}
           </Text>
           <View style={styles.inputRow}>
             <TextInput
@@ -196,7 +108,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
               value={form.pagoMinimoDisplay || ''}
               onChangeText={(v) => {
                 const n = parsear(v);
-                setField('pagoMinimo', n);
+                setField('pagoMinimo',        n);
                 setField('pagoMinimoDisplay', n === '' ? '' : fmt(n));
               }}
             />
@@ -234,11 +146,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
               placeholderTextColor={COLORS.textLight}
               keyboardType="number-pad"
               value={form.montoDisplay || ''}
-              onChangeText={(v) => {
-                const n = parsear(v);
-                setField('montoNum', n);
-                setField('montoDisplay', n === '' ? '' : fmt(n));
-              }}
+              onChangeText={handleMonto}
             />
           </View>
         </View>
@@ -298,15 +206,14 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors }) {
   );
 }
 
-// ── TARJETA DE DEUDA ──────────────────────────────────────────────────────
-function DeudaCard({ deuda, onAbonar }) {
-  const config = TIPOS_CONFIG[deuda.tipo] || TIPOS_CONFIG['Otro'];
+// ── DeudaCard ─────────────────────────────────────────────────────────────
+function DeudaCard({ deuda, onAbonar, fmt }) {
+  const config      = TIPOS_CONFIG[deuda.tipo] || TIPOS_CONFIG['Otro'];
   const montoPagado = deuda.montoPagado || 0;
-  const restante = deuda.monto - montoPagado;
-  const progreso = deuda.monto > 0 ? Math.min(montoPagado / deuda.monto, 1) : 0;
+  const restante    = deuda.monto - montoPagado;
+  const progreso    = deuda.monto > 0 ? Math.min(montoPagado / deuda.monto, 1) : 0;
 
-  // Calcular próximo saldo con interés si aplica
-  const interes = parseFloat(deuda.interes) || 0;
+  const interes         = parseFloat(deuda.interes) || 0;
   const saldoConInteres = interes > 0 ? restante * (1 + interes / 100) : null;
 
   const hoy = new Date();
@@ -316,7 +223,8 @@ function DeudaCard({ deuda, onAbonar }) {
     const fv = new Date(y, m - 1, d);
     diffDays = Math.ceil((fv - hoy) / (1000 * 60 * 60 * 24));
   }
-  const urgencia = diffDays < 0 ? COLORS.danger : diffDays <= 5 ? '#E67E22' : COLORS.secondary;
+  const urgencia =
+    diffDays < 0 ? COLORS.danger : diffDays <= 5 ? '#E67E22' : COLORS.secondary;
 
   return (
     <View style={styles.deudaCard}>
@@ -345,20 +253,14 @@ function DeudaCard({ deuda, onAbonar }) {
         </View>
       </View>
 
-      {/* Barra de progreso */}
       <View style={styles.progressBg}>
-        <View style={[styles.progressFill, {
-          width: `${progreso * 100}%`,
-          backgroundColor: config.color,
-        }]} />
+        <View style={[styles.progressFill, { width: `${progreso * 100}%`, backgroundColor: config.color }]} />
       </View>
 
       <View style={styles.deudaFooter}>
         <View>
           {deuda.cuotas && parseInt(deuda.cuotas) > 1 ? (
-            <Text style={styles.deudaMeta}>
-              {deuda.cuotasPagadas || 0}/{deuda.cuotas} cuotas
-            </Text>
+            <Text style={styles.deudaMeta}>{deuda.cuotasPagadas || 0}/{deuda.cuotas} cuotas</Text>
           ) : (
             <Text style={styles.deudaMeta}>{Math.round(progreso * 100)}% pagado</Text>
           )}
@@ -371,7 +273,10 @@ function DeudaCard({ deuda, onAbonar }) {
             <Text style={styles.deudaMeta}>Día de pago: {deuda.diaPago}</Text>
           ) : null}
         </View>
-        <TouchableOpacity style={[styles.abonarBtn, { backgroundColor: config.color }]} onPress={onAbonar}>
+        <TouchableOpacity
+          style={[styles.abonarBtn, { backgroundColor: config.color }]}
+          onPress={onAbonar}
+        >
           <Text style={styles.abonarText}>Abonar</Text>
         </TouchableOpacity>
       </View>
@@ -379,75 +284,33 @@ function DeudaCard({ deuda, onAbonar }) {
   );
 }
 
-// ── PANTALLA PRINCIPAL ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// PANTALLA PRINCIPAL  —  solo renderiza, nada de lógica
+// ══════════════════════════════════════════════════════════════════════════
 export default function DebtScreen({ navigation }) {
-  const { deudas, agregarDeuda, pagarCuota, productos } = useFinanz();
-  const tarjetas = (productos || []).filter((p) => p.tipo === 'credito');
-
-  const [showForm, setShowForm] = useState(false);
-  const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
-  const [form, setForm] = useState({});
-  const [errors, setErrors] = useState({});
-  const [showModalAbonar, setShowModalAbonar] = useState(false);
-  const [deudaAbonar, setDeudaAbonar] = useState(null);
-  const [showTipos, setShowTipos] = useState(false);
-
-  const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
-
-  const deudasPendientes = deudas.filter((d) => {
-    const mp = d.montoPagado || 0;
-    return mp < d.monto;
-  });
-  const deudasPagadas = deudas.filter((d) => (d.montoPagado || 0) >= d.monto);
-
-  const totalPendiente = deudasPendientes.reduce(
-    (acc, d) => acc + parseFloat(d.monto || 0) - parseFloat(d.montoPagado || 0), 0
-  );
-
-  const validar = () => {
-    const e = {};
-    if (!form.montoNum || form.montoNum <= 0) e.monto = 'Ingresa un monto';
-    if (!tipoSeleccionado) e.tipo = 'Selecciona un tipo';
-
-    // Validar cupo si es tarjeta
-    if (tipoSeleccionado === 'Tarjeta de crédito' && form.tarjetaId) {
-      if (form.cupoDisponible < form.montoNum) {
-        e.monto = 'El monto supera el cupo disponible';
-      }
-    }
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleGuardar = () => {
-    if (!validar()) return;
-    agregarDeuda({
-      tipo: tipoSeleccionado,
-      descripcion: form.descripcion || '',
-      monto: form.montoNum,
-      montoDisplay: '$' + (form.montoDisplay || fmt(form.montoNum)),
-      fecha: isoADisplay(hoyISO()),
-      interes: form.interes || '0',
-      cuotas: form.cuotas || '1',
-      fechaVencimiento: form.fechaVencimiento || '',
-      diaPago: form.diaPago || '',
-      tarjetaId: form.tarjetaId || null,
-      tarjetaNombre: form.tarjetaNombre || null,
-      pagoMinimo: form.pagoMinimo || 0,
-    });
-    setShowForm(false);
-    setTipoSeleccionado(null);
-    setForm({});
-  };
-
-  const resumen = tipoSeleccionado ? calcularResumen(tipoSeleccionado, form) : null;
+  const {
+    // datos
+    deudasPendientes, deudasPagadas, totalPendiente,
+    tarjetas, productos, deudaAbonar,
+    // formulario
+    tipoSeleccionado, form, errors, resumenFinanciero, setField,
+    // modales
+    showForm, showTipos, showModalAbonar,
+    setShowForm, setShowTipos,
+    // acciones
+    seleccionarTipo, handleGuardar, resetForm,
+    abrirModalAbonar, handleAbonar, cancelarAbonar,
+    montoCuotaDeuda,
+    // helpers
+    fmt, isoADisplay, parsear,
+  } = useDebt();
 
   return (
     <>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <StatusBar barStyle="light-content" />
 
-        {/* ── HEADER ── */}
+        {/* ── HEADER ────────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <View>
@@ -463,20 +326,21 @@ export default function DebtScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Resumen total */}
           {deudasPendientes.length > 0 && (
             <View style={styles.headerResumen}>
               <Text style={styles.headerResumenLabel}>Total pendiente</Text>
               <Text style={styles.headerResumenMonto}>${fmt(Math.round(totalPendiente))}</Text>
-              <Text style={styles.headerResumenSub}>{deudasPendientes.length} deuda(s) activa(s)</Text>
+              <Text style={styles.headerResumenSub}>
+                {deudasPendientes.length} deuda(s) activa(s)
+              </Text>
             </View>
           )}
         </View>
 
-        {/* ── CONTENIDO ── */}
+        {/* ── CONTENIDO ─────────────────────────────────────────────── */}
         <View style={styles.content}>
 
-          {/* Botón ir a Productos */}
+          {/* Acceso rápido a Productos */}
           <TouchableOpacity
             style={styles.prodBtn}
             onPress={() => navigation.navigate('Productos')}
@@ -486,7 +350,7 @@ export default function DebtScreen({ navigation }) {
             <Feather name="chevron-right" size={16} color={COLORS.textLight} />
           </TouchableOpacity>
 
-          {/* Lista pendientes */}
+          {/* Deudas pendientes */}
           {deudasPendientes.length === 0 ? (
             <View style={styles.emptyBox}>
               <Feather name="check-circle" size={44} color={COLORS.secondary} />
@@ -500,13 +364,14 @@ export default function DebtScreen({ navigation }) {
                 <DeudaCard
                   key={d.id}
                   deuda={d}
-                  onAbonar={() => { setDeudaAbonar(d); setShowModalAbonar(true); }}
+                  fmt={fmt}
+                  onAbonar={() => abrirModalAbonar(d)}
                 />
               ))}
             </>
           )}
 
-          {/* Lista pagadas */}
+          {/* Deudas pagadas */}
           {deudasPagadas.length > 0 && (
             <>
               <Text style={[styles.seccionTitle, { marginTop: 20 }]}>PAGADAS</Text>
@@ -520,7 +385,9 @@ export default function DebtScreen({ navigation }) {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.deudaTipo, { color: COLORS.textLight }]}>{d.tipo}</Text>
-                        {d.descripcion ? <Text style={styles.deudaDesc}>{d.descripcion}</Text> : null}
+                        {d.descripcion ? (
+                          <Text style={styles.deudaDesc}>{d.descripcion}</Text>
+                        ) : null}
                       </View>
                       <Text style={[styles.deudaMonto, { color: COLORS.textLight }]}>
                         ${fmt(d.monto)}
@@ -536,18 +403,20 @@ export default function DebtScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* ══════════════════════════════════════════════
-          MODAL: FORMULARIO NUEVO DEUDA
-      ══════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════════
+          MODAL: FORMULARIO NUEVA DEUDA
+      ══════════════════════════════════════════════════════════════ */}
       <Modal visible={showForm} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-              {/* Header modal */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Header */}
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Nueva Deuda</Text>
-                <TouchableOpacity onPress={() => { setShowForm(false); setTipoSeleccionado(null); setForm({}); }}>
+                <TouchableOpacity onPress={() => { setShowForm(false); resetForm(); }}>
                   <Feather name="x" size={22} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -570,7 +439,12 @@ export default function DebtScreen({ navigation }) {
                 ) : (
                   <Text style={styles.dropdownPlaceholder}>Selecciona tipo de deuda</Text>
                 )}
-                <Feather name="chevron-down" size={18} color={COLORS.textLight} style={{ marginRight: 14 }} />
+                <Feather
+                  name="chevron-down"
+                  size={18}
+                  color={COLORS.textLight}
+                  style={{ marginRight: 14 }}
+                />
               </TouchableOpacity>
               {errors.tipo ? <Text style={styles.errorText}>{errors.tipo}</Text> : null}
 
@@ -584,7 +458,7 @@ export default function DebtScreen({ navigation }) {
                 onChangeText={(v) => setField('descripcion', v)}
               />
 
-              {/* Monto — solo si NO es arriendo (arriendo usa valorMensual) */}
+              {/* Monto total (omitido para arriendo que usa valorMensual) */}
               {tipoSeleccionado && tipoSeleccionado !== 'Arriendo / hipoteca' && (
                 <>
                   <Text style={[styles.label, { marginTop: 16 }]}>Monto total</Text>
@@ -598,7 +472,7 @@ export default function DebtScreen({ navigation }) {
                       value={form.montoDisplay || ''}
                       onChangeText={(v) => {
                         const n = parsear(v);
-                        setField('montoNum', n);
+                        setField('montoNum',     n);
                         setField('montoDisplay', n === '' ? '' : fmt(n));
                       }}
                     />
@@ -607,7 +481,7 @@ export default function DebtScreen({ navigation }) {
                 </>
               )}
 
-              {/* Formulario dinámico según tipo */}
+              {/* Formulario dinámico por tipo */}
               {tipoSeleccionado && (
                 <FormularioDinamico
                   tipo={tipoSeleccionado}
@@ -615,19 +489,21 @@ export default function DebtScreen({ navigation }) {
                   setField={setField}
                   tarjetas={tarjetas}
                   errors={errors}
+                  fmt={fmt}
+                  parsear={parsear}
                 />
               )}
 
-              {/* Caja de resumen financiero */}
-              {resumen && form.montoNum && (
+              {/* Resumen financiero */}
+              {resumenFinanciero && (
                 <View style={styles.resumenBox}>
                   <View style={styles.resumenRow}>
                     <Feather name="trending-up" size={16} color={COLORS.primary} />
-                    <Text style={styles.resumenLabel}>{resumen.label}</Text>
-                    <Text style={styles.resumenValor}>{resumen.valor}</Text>
+                    <Text style={styles.resumenLabel}>{resumenFinanciero.label}</Text>
+                    <Text style={styles.resumenValor}>{resumenFinanciero.valor}</Text>
                   </View>
-                  {resumen.extra && (
-                    <Text style={styles.resumenExtra}>{resumen.extra}</Text>
+                  {resumenFinanciero.extra && (
+                    <Text style={styles.resumenExtra}>{resumenFinanciero.extra}</Text>
                   )}
                 </View>
               )}
@@ -635,13 +511,12 @@ export default function DebtScreen({ navigation }) {
               <TouchableOpacity style={styles.guardarBtn} onPress={handleGuardar}>
                 <Text style={styles.guardarText}>Guardar deuda</Text>
               </TouchableOpacity>
-
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* ── MODAL SELECTOR TIPO ── */}
+      {/* ── MODAL: SELECTOR DE TIPO ──────────────────────────────────── */}
       <Modal visible={showTipos} transparent animationType="slide">
         <TouchableOpacity
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}
@@ -658,11 +533,7 @@ export default function DebtScreen({ navigation }) {
               return (
                 <TouchableOpacity
                   style={styles.tipoItem}
-                  onPress={() => {
-                    setTipoSeleccionado(item);
-                    setForm({ descripcion: form.descripcion || '' });
-                    setShowTipos(false);
-                  }}
+                  onPress={() => seleccionarTipo(item)}
                 >
                   <View style={[styles.tipoIconBox, { backgroundColor: c.color + '20' }]}>
                     <Feather name={c.icon} size={18} color={c.color} />
@@ -681,19 +552,24 @@ export default function DebtScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* ── MODAL ABONAR ── */}
+      {/* ── MODAL: ABONAR ────────────────────────────────────────────── */}
       <Modal visible={showModalAbonar} transparent animationType="slide">
         <TouchableOpacity
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}
-          onPress={() => setShowModalAbonar(false)}
+          onPress={cancelarAbonar}
         />
         <View style={styles.tiposSheet}>
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle2}>¿Con qué cuenta abonás?</Text>
+
           {productos.length === 0 ? (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: COLORS.textLight }}>No tienes cuentas/productos registrados</Text>
-              <TouchableOpacity onPress={() => { setShowModalAbonar(false); navigation.navigate('Productos'); }}>
+              <Text style={{ color: COLORS.textLight }}>
+                No tienes cuentas/productos registrados
+              </Text>
+              <TouchableOpacity
+                onPress={() => { cancelarAbonar(); navigation.navigate('Productos'); }}
+              >
                 <Text style={{ color: COLORS.primary, marginTop: 10, fontWeight: '600' }}>
                   Agregar cuenta →
                 </Text>
@@ -704,27 +580,22 @@ export default function DebtScreen({ navigation }) {
               data={productos}
               keyExtractor={(p) => p.id}
               renderItem={({ item: p }) => {
-                let montoPago = 0;
-                if (deudaAbonar) {
-                  if (!deudaAbonar.cuotas || parseInt(deudaAbonar.cuotas) <= 1) {
-                    montoPago = deudaAbonar.monto - (deudaAbonar.montoPagado || 0);
-                  } else {
-                    montoPago = deudaAbonar.monto / parseInt(deudaAbonar.cuotas);
-                  }
-                }
-                const sinSaldo = (p.saldoActual || 0) < montoPago;
+                const montoPago = montoCuotaDeuda(deudaAbonar);
+                const sinSaldo  = (p.saldoActual || 0) < montoPago;
                 return (
                   <TouchableOpacity
                     style={[styles.abonarItem, sinSaldo && { opacity: 0.45 }]}
                     disabled={sinSaldo}
-                    onPress={() => {
-                      pagarCuota(deudaAbonar.id, p.id);
-                      setShowModalAbonar(false);
-                      setDeudaAbonar(null);
-                    }}
+                    onPress={() => handleAbonar(p.id)}
                   >
                     <Feather
-                      name={p.tipo === 'credito' ? 'credit-card' : p.tipo === 'debito' ? 'smartphone' : 'dollar-sign'}
+                      name={
+                        p.tipo === 'credito'
+                          ? 'credit-card'
+                          : p.tipo === 'debito'
+                          ? 'smartphone'
+                          : 'dollar-sign'
+                      }
                       size={18}
                       color={COLORS.primary}
                     />
@@ -734,7 +605,9 @@ export default function DebtScreen({ navigation }) {
                         Disponible: ${fmt(p.saldoActual || 0)}
                       </Text>
                       {sinSaldo && (
-                        <Text style={{ fontSize: 11, color: COLORS.danger }}>Saldo insuficiente</Text>
+                        <Text style={{ fontSize: 11, color: COLORS.danger }}>
+                          Saldo insuficiente
+                        </Text>
                       )}
                     </View>
                     <Text style={styles.abonarItemMonto}>-${fmt(Math.round(montoPago))}</Text>
@@ -743,7 +616,11 @@ export default function DebtScreen({ navigation }) {
               }}
             />
           )}
-          <TouchableOpacity onPress={() => setShowModalAbonar(false)} style={{ padding: 16, alignItems: 'center' }}>
+
+          <TouchableOpacity
+            onPress={cancelarAbonar}
+            style={{ padding: 16, alignItems: 'center' }}
+          >
             <Text style={{ color: COLORS.danger, fontWeight: '600' }}>Cancelar</Text>
           </TouchableOpacity>
         </View>
@@ -752,10 +629,13 @@ export default function DebtScreen({ navigation }) {
   );
 }
 
-// ── ESTILOS ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// ESTILOS
+// ══════════════════════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
 
+  // Header
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: Platform.OS === 'web' ? 40 : 70,
@@ -764,11 +644,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: SIZES.headerRadius,
     borderBottomRightRadius: SIZES.headerRadius,
   },
-  headerRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  welcome: { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
-  headerName: { color: '#fff', fontSize: SIZES.title, fontWeight: 'bold' },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  welcome:   { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
+  headerName:{ color: '#fff', fontSize: SIZES.title, fontWeight: 'bold' },
   addBtn: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
@@ -779,8 +657,9 @@ const styles = StyleSheet.create({
   },
   headerResumenLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
   headerResumenMonto: { color: '#fff', fontSize: 28, fontWeight: 'bold', marginVertical: 2 },
-  headerResumenSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+  headerResumenSub:   { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
 
+  // Content
   content: {
     backgroundColor: COLORS.background,
     marginTop: -20,
@@ -801,35 +680,34 @@ const styles = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: COLORS.textSecondary,
     letterSpacing: 0.6, marginBottom: 12,
   },
+  emptyBox:  { alignItems: 'center', paddingVertical: 50, gap: 10 },
+  emptyTitle:{ fontSize: 17, fontWeight: '600', color: COLORS.textPrimary },
+  emptySub:  { fontSize: 14, color: COLORS.textLight },
 
-  emptyBox: { alignItems: 'center', paddingVertical: 50, gap: 10 },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: COLORS.textPrimary },
-  emptySub: { fontSize: 14, color: COLORS.textLight },
-
-  // Tarjeta de deuda
+  // Deuda card
   deudaCard: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,
     marginBottom: 12, borderWidth: 1, borderColor: '#F0F0F0',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  deudaHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  deudaHeader:  { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
   deudaIconBox: {
     width: 40, height: 40, borderRadius: 10,
     borderWidth: 1.5, justifyContent: 'center', alignItems: 'center',
   },
-  deudaTipo: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-  deudaDesc: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
+  deudaTipo:    { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
+  deudaDesc:    { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
   deudaTarjeta: { fontSize: 11, color: COLORS.primary, marginTop: 2 },
-  deudaMonto: { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
+  deudaMonto:   { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary },
   deudaInteres: { fontSize: 11, color: COLORS.danger, marginTop: 2 },
-  progressBg: { height: 5, backgroundColor: '#F0F0F0', borderRadius: 3, marginBottom: 10 },
+  progressBg:   { height: 5, backgroundColor: '#F0F0F0', borderRadius: 3, marginBottom: 10 },
   progressFill: { height: 5, borderRadius: 3 },
-  deudaFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  deudaMeta: { fontSize: 12, color: COLORS.textLight },
-  deudaFecha: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  abonarBtn: { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 10 },
-  abonarText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  deudaFooter:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  deudaMeta:    { fontSize: 12, color: COLORS.textLight },
+  deudaFecha:   { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  abonarBtn:    { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 10 },
+  abonarText:   { color: '#fff', fontSize: 13, fontWeight: '600' },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
@@ -859,17 +737,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
   },
 
-  // Campos del formulario
+  // Form
   label: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 8 },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderColor: '#E0E0E0',
     borderRadius: SIZES.borderRadius, backgroundColor: '#FAFAFA', minHeight: 50,
   },
-  inputError: { borderColor: COLORS.danger },
-  prefix: { paddingLeft: 14, paddingRight: 4, fontSize: 16, color: COLORS.textSecondary },
-  suffix: { paddingRight: 14, fontSize: 14, color: COLORS.textLight },
-  inputMonto: { flex: 1, paddingVertical: 13, paddingHorizontal: 8, fontSize: 15, color: COLORS.textPrimary },
+  inputError:  { borderColor: COLORS.danger },
+  prefix:      { paddingLeft: 14, paddingRight: 4, fontSize: 16, color: COLORS.textSecondary },
+  suffix:      { paddingRight: 14, fontSize: 14, color: COLORS.textLight },
+  inputMonto:  { flex: 1, paddingVertical: 13, paddingHorizontal: 8, fontSize: 15, color: COLORS.textPrimary },
   inputText: {
     borderWidth: 1, borderColor: '#E0E0E0', borderRadius: SIZES.borderRadius,
     backgroundColor: '#FAFAFA', paddingHorizontal: 14, paddingVertical: 13,
@@ -892,9 +770,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   tipoItemTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-  tipoItemDesc: { fontSize: 12, color: COLORS.textLight, marginTop: 1 },
+  tipoItemDesc:  { fontSize: 12, color: COLORS.textLight, marginTop: 1 },
 
-  // Tarjetas en formulario
+  // Tarjetas en form
   tarjetaItem: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: 14, borderRadius: 12,
@@ -902,11 +780,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA', marginBottom: 8, gap: 12,
   },
   tarjetaItemActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  tarjetaLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  tarjetaName: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
-  tarjetaInfo: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
+  tarjetaLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  tarjetaName:  { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
+  tarjetaInfo:  { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
 
-  // Alert
   alertBox: {
     flexDirection: 'row', gap: 8, alignItems: 'center',
     backgroundColor: '#FFF8E1', borderRadius: 10,
@@ -921,12 +798,12 @@ const styles = StyleSheet.create({
     padding: 14, marginTop: 16,
     borderLeftWidth: 3, borderLeftColor: COLORS.primary,
   },
-  resumenRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  resumenRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   resumenLabel: { flex: 1, fontSize: 13, color: COLORS.textSecondary },
   resumenValor: { fontSize: 15, fontWeight: 'bold', color: COLORS.primary },
   resumenExtra: { fontSize: 12, color: COLORS.textSecondary, marginTop: 6 },
 
-  // Guardar
+  // Botón guardar
   guardarBtn: {
     backgroundColor: COLORS.primary, borderRadius: 14,
     paddingVertical: 16, alignItems: 'center',
@@ -941,6 +818,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
   },
   abonarItemNombre: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-  abonarItemSaldo: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
-  abonarItemMonto: { fontSize: 14, fontWeight: 'bold', color: COLORS.danger },
+  abonarItemSaldo:  { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
+  abonarItemMonto:  { fontSize: 14, fontWeight: 'bold', color: COLORS.danger },
 });

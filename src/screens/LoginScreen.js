@@ -1,3 +1,4 @@
+//LoginScreen.js
 import React from 'react';  // ← quita useContext
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image } from 'react-native';
 import { COLORS, SIZES } from '../constants/Colors';

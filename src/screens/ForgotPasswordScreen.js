@@ -1,3 +1,4 @@
+//ForgotPasswordScreen
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity,
@@ -41,7 +42,7 @@ export default function ForgotPasswordScreen({ navigation }) {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.appName}>Financify</Text>
+          <Text style={styles.appName}>FinanzApp</Text>
         </View>
 
         {/* Ícono de éxito — igual que RegisterSuccess */}
@@ -95,7 +96,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.appName}>Financify</Text>
+        <Text style={styles.appName}>FinanzApp</Text>
         <Text style={styles.title}>Recuperar Contraseña</Text>
       </View>
 

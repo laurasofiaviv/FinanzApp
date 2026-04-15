@@ -1,3 +1,4 @@
+//screens/EmailSentScreen.js
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,

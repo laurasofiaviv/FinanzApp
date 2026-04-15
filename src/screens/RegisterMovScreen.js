@@ -1,4 +1,4 @@
-// RegisterMovScreen.js
+// src/screens/RegisterMovScreen.js
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity,
@@ -8,18 +8,19 @@ import {
 import { Calendar } from 'react-native-calendars';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
-import { useFinanz } from '../context/FinanzContext';
+import { useRegisterMov } from '../hooks/useRegisterMov';
+import ProductoSelector from '../components/ProductoSelector';
 
 const CATEGORIAS_GASTO = [
-  { id: '1', label: 'Alimentación' },
-  { id: '2', label: 'Transporte' },
-  { id: '3', label: 'Vivienda' },
-  { id: '4', label: 'Salud' },
-  { id: '5', label: 'Educación' },
-  { id: '6', label: 'Entretenimiento' },
-  { id: '7', label: 'Ropa' },
-  { id: '8', label: 'Tecnología' },
-  { id: '9', label: 'Mascotas' },
+  { id: '1',  label: 'Alimentación' },
+  { id: '2',  label: 'Transporte' },
+  { id: '3',  label: 'Vivienda' },
+  { id: '4',  label: 'Salud' },
+  { id: '5',  label: 'Educación' },
+  { id: '6',  label: 'Entretenimiento' },
+  { id: '7',  label: 'Ropa' },
+  { id: '8',  label: 'Tecnología' },
+  { id: '9',  label: 'Mascotas' },
   { id: '10', label: 'Deudas' },
   { id: '11', label: 'Regalos' },
   { id: '12', label: 'Servicios' },
@@ -35,229 +36,46 @@ const TIPOS_DEUDA = [
   { id: '6', label: 'Otro' },
 ];
 
-// ── HELPERS ───────────────────────────────────────────────────────────────
-function fmt(num) {
-  if (num === '' || num === null || num === undefined) return '';
-  return Number(num).toLocaleString('es-CO');
-}
-function parsear(texto) {
-  const d = texto.replace(/[^0-9]/g, '');
-  return d === '' ? '' : parseInt(d, 10);
-}
-function isoADisplay(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-function hoyISO() {
-  return new Date().toISOString().split('T')[0];
-}
-
-const estadoVacio = () => ({
-  montoNum: '',
-  montoDisplay: '',
-  fechaISO: hoyISO(),
-  descripcion: '',
-  categoria: null,
-  cuotas: '1',
-  fechaVencimientoISO: '',
-  errors: {},
-});
-
-// ── COMPONENTE SELECTOR DE TARJETA ────────────────────────────────────────
-function ProductoSelector({ productos, seleccionada, onSelect }) {
-  if (!productos || productos.length === 0) return null;
-
-  const FRANQ_COLOR = {
-    visa: '#1A1F71',
-    mastercard: '#EB001B',
-    amex: '#007BC1',
-  };
-  const ICONOS = {
-    credito: 'credit-card',
-    debito: 'smartphone',
-    efectivo: 'dollar-sign',
-  };
-
-  return (
-    <View style={styles.tarjetaCard}>
-      <Text style={styles.tarjetaTitle}>¿Con qué pagaste?</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-        {/* Opción "efectivo/otro" */}
-        <TouchableOpacity
-          style={[styles.tarjetaPill, !seleccionada && styles.tarjetaPillActive]}
-          onPress={() => onSelect(null)}
-        >
-          <Feather name="dollar-sign" size={14} color={!seleccionada ? '#fff' : COLORS.textSecondary} />
-          <Text style={[styles.tarjetaPillText, !seleccionada && { color: '#fff' }]}>Efectivo/Otro</Text>
-        </TouchableOpacity>
-
-        {productos.map((p) => {
-          const activa = seleccionada?.id === p.id;
-          const color = FRANQ_COLOR[p.franquicia] || COLORS.primary;
-          return (
-            <TouchableOpacity
-              key={p.id}
-              style={[
-                styles.tarjetaPill,
-                { borderColor: color },
-                activa && { backgroundColor: color },
-              ]}
-              onPress={() => onSelect(p)}
-            >
-              <Feather
-                name={ICONOS[p.tipo] || 'credit-card'}
-                size={14}
-                color={activa ? '#fff' : color}
-              />
-              <Text style={[styles.tarjetaPillText, activa && { color: '#fff' }]}>
-                {p.nombre}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {seleccionada && (
-        <View style={styles.tarjetaInfo}>
-          <Feather name="info" size={12} color={COLORS.primary} />
-          <Text style={styles.tarjetaInfoText}>
-            Se registrará el gasto en {seleccionada.nombre}
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
 // ── PANTALLA PRINCIPAL ────────────────────────────────────────────────────
-export default function RegisterMovScreen({ navigation }) {
-  const { agregarGasto, agregarIngreso, agregarDeuda, productos } = useFinanz();
+export default function RegisterMovScreen() {
+  const {
+    tab,
+    form,
+    esRecurrente,
+    frecuencia,
+    modo,
+    tarjetaSeleccionada,
+    guardado,
+    toast,
+    shakeAnim,
+    productos,
+    setField,
+    handleMonto,
+    cambiarTab,
+    setEsRecurrente,
+    setFrecuencia,
+    setModo,
+    setTarjetaSeleccionada,
+    handleGuardar,
+    isoADisplay,
+  } = useRegisterMov();
 
-  const [tab, setTab] = useState('gasto');
-  const [form, setForm] = useState(estadoVacio());
-
-  // Recurrencia
-  const [esRecurrente, setEsRecurrente] = useState(false);
-  const [frecuencia, setFrecuencia] = useState('mensual');
-  const [modo, setModo] = useState('auto');
-
-  // Tarjeta vinculada al gasto
-  const [tarjetaSeleccionada, setTarjetaSeleccionada] = useState(null);
-
-  // Modales
-  const [showCal, setShowCal] = useState(false);
+  // Solo estado visual puro: apertura/cierre de modales
+  const [showCal, setShowCal]           = useState(false);
   const [showCalVence, setShowCalVence] = useState(false);
-  const [showCat, setShowCat] = useState(false);
-  const [guardado, setGuardado] = useState(false);
-
-  const [toast, setToast] = useState(null); // mensaje de error tipo banco
-  const [shakeAnim] = useState(new Animated.Value(0));
-
-  const tarjetas = productos || [];
-
-  const setField = (key, val) =>
-    setForm((prev) => ({ ...prev, [key]: val, errors: { ...prev.errors, [key]: null } }));
-
-  const handleMonto = (texto) => {
-    const num = parsear(texto);
-    setForm((prev) => ({
-      ...prev,
-      montoNum: num,
-      montoDisplay: num === '' ? '' : fmt(num),
-      errors: { ...prev.errors, monto: null },
-    }));
-  };
-
-  const cambiarTab = (t) => {
-    setTab(t);
-    setForm(estadoVacio());
-    setTarjetaSeleccionada(null);
-  };
-
-  const validar = () => {
-    const e = {};
-    if (!form.montoNum || form.montoNum <= 0) e.monto = 'Ingresa un monto válido';
-    if (!form.fechaISO) e.fecha = 'Selecciona una fecha';
-    if (tab !== 'ingreso' && !form.categoria) e.categoria = 'Selecciona una opción';
-    if (tab === 'deuda' && !form.fechaVencimientoISO) e.vencimiento = 'Selecciona fecha de pago';
-    setForm((prev) => ({ ...prev, errors: e }));
-    return Object.keys(e).length === 0;
-  };
-
-  const triggerShake = () => {
-    Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const handleGuardar = () => {
-    if (!validar()) return;
-    const base = {
-      monto: form.montoNum,
-      montoDisplay: '$' + form.montoDisplay,
-      fecha: isoADisplay(form.fechaISO),
-    };
-    const recurrenteData = esRecurrente ? { frecuencia, modo } : null;
-
-    let resultado = true;
-
-    if (tab === 'gasto') {
-      resultado = agregarGasto({
-        ...base,
-        categoria: form.categoria?.label,
-        descripcion: form.descripcion,
-        recurrente: recurrenteData,
-        productoId: tarjetaSeleccionada ? tarjetaSeleccionada.id : null,
-        pagoConTarjeta: tarjetaSeleccionada ? tarjetaSeleccionada.nombre : null,
-      });
-    }
-
-    if (tab === 'ingreso') {
-      agregarIngreso({
-        ...base,
-        motivo: form.descripcion,
-        recurrente: recurrenteData,
-        productoId: tarjetaSeleccionada ? tarjetaSeleccionada.id : null,
-      });
-    }
-
-    if (tab === 'deuda') {
-      agregarDeuda({
-        ...base,
-        tipo: form.categoria?.label,
-        descripcion: form.descripcion,
-        cuotas: form.cuotas,
-        fechaVencimiento: isoADisplay(form.fechaVencimientoISO),
-      });
-    }
-    if (!resultado) {
-      setToast('Transacción rechazada: saldo insuficiente');
-      triggerShake();
-
-      setTimeout(() => setToast(null), 2500);
-      return;
-    }
-
-    setGuardado(true);
-    setTimeout(() => {
-      setGuardado(false);
-      setForm(estadoVacio());
-      setTarjetaSeleccionada(null);
-    }, 1400);
-  };
+  const [showCat, setShowCat]           = useState(false);
 
   const headerColor = tab === 'ingreso' ? '#2ECC71' : COLORS.primary;
-  const catList = tab === 'deuda' ? TIPOS_DEUDA : CATEGORIAS_GASTO;
-  const catLabel = tab === 'deuda' ? 'Tipo de deuda' : 'Categoría';
+  const catList     = tab === 'deuda' ? TIPOS_DEUDA : CATEGORIAS_GASTO;
+  const catLabel    = tab === 'deuda' ? 'Tipo de deuda' : 'Categoría';
 
-  // Pantalla de éxito
+  // ── Pantalla de éxito ─────────────────────────────────────────────────
   if (guardado) {
-    const msgs = { gasto: '¡Gasto registrado!', ingreso: '¡Ingreso registrado!', deuda: '¡Deuda registrada!' };
+    const msgs = {
+      gasto:   '¡Gasto registrado!',
+      ingreso: '¡Ingreso registrado!',
+      deuda:   '¡Deuda registrada!',
+    };
     return (
       <View style={styles.successContainer}>
         <View style={[styles.successIcon, { backgroundColor: headerColor }]}>
@@ -272,6 +90,7 @@ export default function RegisterMovScreen({ navigation }) {
     );
   }
 
+  // ── Render principal ──────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" />
@@ -294,17 +113,16 @@ export default function RegisterMovScreen({ navigation }) {
         </View>
       </View>
 
+      {/* Contenedor con animación shake */}
       <Animated.View
         style={{
           flex: 1,
-          transform: [
-            {
-              translateX: shakeAnim.interpolate({
-                inputRange: [-1, 1],
-                outputRange: [-10, 10],
-              }),
-            },
-          ],
+          transform: [{
+            translateX: shakeAnim.interpolate({
+              inputRange: [-1, 1],
+              outputRange: [-10, 10],
+            }),
+          }],
         }}
       >
         <ScrollView
@@ -388,10 +206,10 @@ export default function RegisterMovScreen({ navigation }) {
             multiline
           />
 
-          {/* ── SELECTOR DE TARJETA (solo gastos con tarjetas registradas) ── */}
-          {(tab === 'gasto' || tab === 'ingreso') && tarjetas.length > 0 && (
+          {/* Selector de producto/tarjeta */}
+          {(tab === 'gasto' || tab === 'ingreso') && productos.length > 0 && (
             <ProductoSelector
-              productos={tarjetas}
+              productos={productos}
               seleccionada={tarjetaSeleccionada}
               onSelect={setTarjetaSeleccionada}
             />
@@ -415,7 +233,9 @@ export default function RegisterMovScreen({ navigation }) {
                         style={[styles.pill, frecuencia === f && styles.pillActive]}
                         onPress={() => setFrecuencia(f)}
                       >
-                        <Text style={styles.pillText}>{f === 'quincenal' ? 'Cada quincena' : 'Cada mes'}</Text>
+                        <Text style={styles.pillText}>
+                          {f === 'quincenal' ? 'Cada quincena' : 'Cada mes'}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -423,7 +243,7 @@ export default function RegisterMovScreen({ navigation }) {
                   <Text style={[styles.recLabel, { marginTop: 12 }]}>Modo</Text>
                   <View style={styles.row}>
                     {[
-                      { id: 'auto', label: 'Auto-aplicar' },
+                      { id: 'auto',      label: 'Auto-aplicar' },
                       { id: 'preguntar', label: 'Preguntar antes' },
                     ].map((m) => (
                       <TouchableOpacity
@@ -438,7 +258,8 @@ export default function RegisterMovScreen({ navigation }) {
 
                   <View style={styles.recInfo}>
                     <Text style={{ fontSize: 12 }}>
-                      Este {tab} se {modo === 'auto' ? 'registrará automáticamente' : 'te pedirá confirmación'}{' '}
+                      Este {tab} se{' '}
+                      {modo === 'auto' ? 'registrará automáticamente' : 'te pedirá confirmación'}{' '}
                       {frecuencia === 'quincenal' ? 'cada quincena' : 'cada mes'}.
                     </Text>
                   </View>
@@ -463,13 +284,14 @@ export default function RegisterMovScreen({ navigation }) {
             <Calendar
               onDayPress={(day) => {
                 if (showCalVence) setField('fechaVencimientoISO', day.dateString);
-                else setField('fechaISO', day.dateString);
+                else              setField('fechaISO', day.dateString);
                 setShowCal(false);
                 setShowCalVence(false);
               }}
               markedDates={{
                 [showCalVence ? form.fechaVencimientoISO : form.fechaISO]: {
-                  selected: true, selectedColor: headerColor,
+                  selected: true,
+                  selectedColor: headerColor,
                 },
               }}
             />
@@ -501,23 +323,23 @@ export default function RegisterMovScreen({ navigation }) {
           />
         </View>
       </Modal>
-      {
-        toast && (
-          <View style={styles.toast}>
-            <Text style={styles.toastText}>{toast}</Text>
-          </View>
-        )
-      }
+
+      {/* Toast de error */}
+      {toast && (
+        <View style={styles.toast}>
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
-
 }
 
 // ── ESTILOS ───────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 24, paddingHorizontal: SIZES.padding,
+    paddingBottom: 24,
+    paddingHorizontal: SIZES.padding,
     borderBottomLeftRadius: SIZES.headerRadius,
     borderBottomRightRadius: SIZES.headerRadius,
   },
@@ -552,27 +374,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', padding: 14, fontSize: 15, color: COLORS.textPrimary, minHeight: 100,
   },
 
-  // ── Selector de tarjeta ─────────────────────────────────────────────────
-  tarjetaCard: {
-    marginTop: 20, backgroundColor: '#fff', borderRadius: 16,
-    padding: 16, borderWidth: 1, borderColor: '#E5E7EB',
-  },
-  tarjetaTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-  tarjetaPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20,
-    borderWidth: 1.5, borderColor: COLORS.textLight,
-    marginRight: 8, backgroundColor: '#FAFAFA',
-  },
-  tarjetaPillActive: { backgroundColor: COLORS.textSecondary, borderColor: COLORS.textSecondary },
-  tarjetaPillText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
-  tarjetaInfo: {
-    flexDirection: 'row', gap: 6, alignItems: 'center',
-    marginTop: 10, backgroundColor: '#EAF3F6', borderRadius: 8, padding: 8,
-  },
-  tarjetaInfoText: { flex: 1, fontSize: 12, color: COLORS.textSecondary },
-
-  // ── Recurrencia ─────────────────────────────────────────────────────────
   recCard: {
     marginTop: 20, backgroundColor: '#fff', borderRadius: 16,
     padding: 16, borderWidth: 1, borderColor: '#E5E7EB',
@@ -582,10 +383,7 @@ const styles = StyleSheet.create({
   recLabel: { marginTop: 10, fontSize: 13, fontWeight: '600', color: '#555' },
   recInfo: { marginTop: 10, backgroundColor: '#EAF3F6', padding: 10, borderRadius: 10 },
   row: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  pill: {
-    flex: 1, backgroundColor: '#EAF3F6', padding: 10,
-    borderRadius: 20, alignItems: 'center',
-  },
+  pill: { flex: 1, backgroundColor: '#EAF3F6', padding: 10, borderRadius: 20, alignItems: 'center' },
   pillActive: { backgroundColor: COLORS.primary },
   pillText: { color: '#333', fontSize: 13, fontWeight: '500' },
 
@@ -615,23 +413,14 @@ const styles = StyleSheet.create({
   },
   modalItem: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   modalItemText: { fontSize: 16, color: COLORS.textPrimary },
+
   toast: {
     position: 'absolute',
-    top: 60,
-    left: 20,
-    right: 20,
+    top: 60, left: 20, right: 20,
     backgroundColor: '#E74C3C',
-    padding: 14,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    zIndex: 999,
-    elevation: 10,
+    padding: 14, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    zIndex: 999, elevation: 10,
   },
-  toastText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
+  toastText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });

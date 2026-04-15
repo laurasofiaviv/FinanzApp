@@ -1,3 +1,4 @@
+//RegisterScreen.js
 import React, { useState, useContext, useRef } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity,
