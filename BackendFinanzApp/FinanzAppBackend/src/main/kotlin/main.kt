@@ -13,6 +13,8 @@ import io.ktor.server.plugins.cors.routing.*
 import com.finanzapp.routes.movimientoRoutes
 import kotlinx.serialization.json.Json
 import com.finanzapp.routes.deudaRoutes
+import com.finanzapp.routes.reporteRoutes
+
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
@@ -44,4 +46,5 @@ fun Application.module() {
     movimientoRoutes()
     userRoutes()
     deudaRoutes()
+    reporteRoutes()
 }
