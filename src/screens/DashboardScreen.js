@@ -8,6 +8,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useFinanz } from '../context/FinanzContext';
 import { COLORS, SIZES } from '../constants/Colors';
 import { Feather } from '@expo/vector-icons';
+import { useAlertas } from '../hooks/useAlertas';
 
 const CATEGORIA_ICON = {
   'Alimentación': 'shopping-cart',
@@ -33,12 +34,14 @@ export default function DashboardScreen({ navigation }) {
     totalGastosMes,
     movimientosRecientes,
     productos,
-    deudas
+    deudas,
+    agregarGasto
   } = useFinanz();
+  const { alertas, hayUrgentes } = useAlertas();
 
   const userName = usuario?.nombre || 'Juan Pérez';
 
-  // ✅ CORRECCIÓN 1: Definir la variable initials antes de usarla
+
   const initials = userName
     .split(' ')
     .map((n) => n[0])
@@ -87,7 +90,7 @@ export default function DashboardScreen({ navigation }) {
             <Feather name="credit-card" size={40} color={COLORS.primary} />
 
             <Text style={styles.emptyMainTitle}>
-              Empieza organizando tu dinero 
+              Empieza organizando tu dinero
             </Text>
 
             <Text style={styles.emptyMainText}>
@@ -172,11 +175,125 @@ export default function DashboardScreen({ navigation }) {
 
         {/* ── Recordatorios ── */}
         <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>RECORDATORIOS Y ALERTAS</Text>
-          <View style={styles.emptyRow}>
-            <Feather name="bell" size={28} color={COLORS.textLight} />
-            <Text style={styles.emptyText}>No hay alertas activas</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={styles.sectionTitle}>RECORDATORIOS Y ALERTAS</Text>
+            {alertas.length > 0 && (
+              <View style={{
+                backgroundColor: hayUrgentes ? COLORS.danger : '#F39C12',
+                borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+              }}>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
+                  {alertas.length}
+                </Text>
+              </View>
+            )}
           </View>
+
+          {alertas.length === 0 ? (
+            <View style={styles.emptyRow}>
+              <Feather name="check-circle" size={28} color={COLORS.secondary} />
+              <Text style={styles.emptyText}>Sin alertas activas</Text>
+            </View>
+          ) : (
+            alertas.map(alerta => (
+              <TouchableOpacity   // ← cambiar View por TouchableOpacity
+                key={alerta.id}
+                onPress={() => !alerta.accionRegistrar && alerta.navegarA && navigation.navigate(alerta.navegarA)}
+                activeOpacity={alerta.navegarA && !alerta.accionRegistrar ? 0.7 : 1}
+                style={{
+                  flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+                  paddingVertical: 10,
+                  borderBottomWidth: 1, borderBottomColor: '#F5F5F5',
+                }}
+              >
+                <View style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  backgroundColor: alerta.color + '20',
+                  justifyContent: 'center', alignItems: 'center',
+                }}>
+                  <Feather name={alerta.icono} size={16} color={alerta.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: COLORS.textPrimary }}>
+                    {alerta.titulo}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: alerta.color, marginTop: 2, fontWeight: '500' }}>
+                    {alerta.descripcion}
+                  </Text>
+                  {alerta.detalle ? (
+                    <Text style={{ fontSize: 11, color: COLORS.textLight, marginTop: 1 }}>
+                      {alerta.detalle}
+                    </Text>
+                  ) : null}
+                  {alerta.navegarA && (
+                    <Text style={{ fontSize: 11, color: alerta.color, marginTop: 3, fontWeight: '600' }}>
+                      Ir a pagar →
+                    </Text>
+                  )}
+                  {alerta.accionRegistrar && (
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#8E44AD',
+                          borderRadius: 8,
+                          paddingVertical: 6,
+                          alignItems: 'center',
+                        }}
+                        onPress={async () => {
+
+                          const a = alerta.accionRegistrar;
+
+                          await agregarGasto({
+                            monto: a.monto,
+                            montoDisplay: a.montoDisplay?.replace('$', '') || String(a.monto),
+                            categoria: a.categoria,
+                            descripcion: a.descripcion || '',
+                            fecha: new Date().toLocaleDateString('es-CO'),
+                            productoId: a.productoId || null,
+                            recurrente: null,
+                          });
+
+                        }}
+                      >
+                        <Text style={{
+                          color: '#fff',
+                          fontSize: 12,
+                          fontWeight: '600'
+                        }}>
+                          Registrar
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: '#8E44AD',
+                          borderRadius: 8,
+                          paddingVertical: 6,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{
+                          color: '#8E44AD',
+                          fontSize: 12,
+                          fontWeight: '600'
+                        }}>
+                          Más tarde
+                        </Text>
+                      </TouchableOpacity>
+
+                    </View>
+                  )}
+                </View>
+                {alerta.tipo === 'urgente' && (
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#E74C3C', marginTop: 4 }} />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* ── Movimientos Recientes ── */}
@@ -197,6 +314,7 @@ export default function DashboardScreen({ navigation }) {
               const etiqueta = esIngreso ? (mov.motivo || 'Ingreso') : (mov.categoria || 'Gasto');
               const signo = esIngreso ? '+' : '-';
               const montoColor = esIngreso ? COLORS.secondary : COLORS.danger;
+
 
               return (
                 <View key={mov.id} style={styles.movRow}>

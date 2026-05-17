@@ -213,8 +213,19 @@ export function useDebt() {
   };
 
   // ── Derivaciones de deudas ────────────────────────────────────────────
-  const deudasPendientes = deudas.filter((d) => (d.montoPagado || 0) < d.monto);
-  const deudasPagadas = deudas.filter((d) => (d.montoPagado || 0) >= d.monto);
+  const deudasPendientes = deudas.filter((d) => {
+    if (d.esEspejo) {
+      // Deuda espejo de tarjeta: mostrar si tiene saldo usado
+      return (d.monto || 0) > 0 && (d.montoPagado || 0) < d.monto;
+    }
+    // Deuda normal: mostrar si tiene saldo pendiente
+    return (d.montoPagado || 0) < (d.monto || 0);
+  });
+
+  const deudasPagadas = deudas.filter((d) => {
+    if (d.esEspejo) return false; // las espejo nunca van a "pagadas"
+    return (d.montoPagado || 0) >= (d.monto || 0) && (d.monto || 0) > 0;
+  });
   const totalPendiente = deudasPendientes.reduce(
     (acc, d) => acc + parseFloat(d.monto || 0) - parseFloat(d.montoPagado || 0),
     0,
