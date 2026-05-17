@@ -28,5 +28,11 @@ data class Deuda(
 @Serializable
 data class AbonoRequest(
     val productoPagoId: String,
-    val monto: Double
+
+    )
+
+@Serializable
+data class AbonoResponse(
+    val deuda: Deuda,
+    val montoPago: Double
 )
