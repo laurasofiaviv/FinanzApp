@@ -34,7 +34,7 @@ object ReporteService {
 
         // --- Por categoría (solo gastos) ---
         val porCategoria: List<CategoriaSummary> = gastos
-            .groupBy { it.categoria.ifBlank { "Sin categoría" } }
+            .groupBy { it.categoria?.ifBlank { "Sin categoría" } ?: "Sin categoría" }
             .map { (cat, movs) ->
                 val subtotal = movs.sumOf { it.monto }
                 val pct = if (totalGastos > 0) (subtotal / totalGastos) * 100 else 0.0
@@ -82,9 +82,10 @@ object ReporteService {
             val fecha = Instant.ofEpochMilli(mov.creadoEn)
                 .atZone(ZoneId.of("America/Bogota"))
                 .toLocalDate()
-            // Escapar comas en descripción y categoría
-            val desc = mov.descripcion.replace(",", ";")
-            val cat  = mov.categoria.replace(",", ";")
+
+            val desc = mov.descripcion?.replace(",", ";") ?: ""
+            val cat  = mov.categoria?.replace(",", ";") ?: "Sin categoría"
+
             sb.appendLine("${mov.id},${mov.tipo},${mov.monto},$cat,$desc,$fecha")
         }
         return sb.toString()

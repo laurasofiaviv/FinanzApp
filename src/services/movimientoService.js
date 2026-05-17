@@ -1,7 +1,7 @@
 // src/services/movimientoService.js
 import { getAuth } from 'firebase/auth';
 
-const API_URL = 'http://192.168.1.48:8080';
+import API_URL from '../config/api';
 
 async function getToken() {
   const user = getAuth().currentUser;

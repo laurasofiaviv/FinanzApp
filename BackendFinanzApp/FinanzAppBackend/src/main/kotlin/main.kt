@@ -14,10 +14,20 @@ import com.finanzapp.routes.movimientoRoutes
 import kotlinx.serialization.json.Json
 import com.finanzapp.routes.deudaRoutes
 import com.finanzapp.routes.reporteRoutes
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.http.*
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
 
 
 fun main(args: Array<String>) {
-    io.ktor.server.netty.EngineMain.main(args)
+    embeddedServer(
+        Netty,
+        port = 8080,
+        host = "0.0.0.0"   // ← escucha en todas las interfaces
+    ) {
+        module()
+    }.start(wait = true)
 }
 
 fun Application.module() {
@@ -31,14 +41,16 @@ fun Application.module() {
     }
 
     install(CORS) {
+        anyHost()
+        allowNonSimpleContentTypes = true
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.Authorization)
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
-        allowMethod(HttpMethod.Delete)
         allowMethod(HttpMethod.Put)
-        allowHeader(HttpHeaders.Authorization)
-        allowHeader(HttpHeaders.ContentType)
-        anyHost()
+        allowMethod(HttpMethod.Delete)
+        // ← Sin allowCredentials = true
     }
 
     authRoutes()

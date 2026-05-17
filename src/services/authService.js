@@ -7,6 +7,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
 } from 'firebase/auth';
+import API_URL from '../config/api';
 
 // ── Configura con tus datos de Firebase Console ───────────────────────────────
 const firebaseConfig = {
@@ -23,7 +24,6 @@ if (!getApps().length) initializeApp(firebaseConfig);
 const auth = getAuth();
 
 // URL de tu backend Ktor (en desarrollo usa tu IP local, no localhost)
-const API_URL = 'http://192.168.1.48:8080'; // ← cambia por tu IP
 
 // ── REGISTRO ──────────────────────────────────────────────────────────────────
 export async function registerUser({ nombre, email, password }) {

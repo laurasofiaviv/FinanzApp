@@ -1,7 +1,7 @@
 // src/services/productService.js
 import { getAuth } from 'firebase/auth';
 
-const API_URL = 'http://192.168.1.48:8080';
+import API_URL from '../config/api';
 
 // Obtiene el token del usuario logueado para enviarlo al backend
 async function getToken() {
