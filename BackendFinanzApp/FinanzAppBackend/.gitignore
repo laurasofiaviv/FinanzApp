@@ -1,0 +1,9 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ
+.idea/
+
+# Firebase - NUNCA subir
+src/main/resources/firebase-service-account.json

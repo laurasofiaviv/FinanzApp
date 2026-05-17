@@ -14,126 +14,83 @@ function parsear(t) {
 }
 
 export function useEditProduct(productoId, navigation) {
-    const { productos, eliminarProducto } = useFinanz();
+    const { productos, eliminarProducto, editarProducto } = useFinanz(); // ← editarProducto
 
-    // ── Producto original (la pantalla no lo conoce directamente) ─────────
     const original = productos.find((p) => p.id === productoId) || null;
 
-    // ── Estado del formulario inicializado con datos reales ───────────────
-    const [nombre,     setNombre]     = useState(original?.nombre      || '');
-    const [saldoDisp,  setSaldoDisp]  = useState(fmt(original?.saldoActual || 0));
-    const [cupoDisp,   setCupoDisp]   = useState(fmt(original?.cupoTotal   || 0));
-    const [diaCorte,   setDiaCorte]   = useState(String(original?.diaCorte || ''));
-    const [diaPago,    setDiaPago]    = useState(String(original?.diaPago  || ''));
-    const [errors,     setErrors]     = useState({});
+    const [nombre, setNombre] = useState(original?.nombre || '');
+    const [saldoDisp, setSaldoDisp] = useState(fmt(original?.saldoActual || 0));
+    const [cupoDisp, setCupoDisp] = useState(fmt(original?.cupoTotal || 0));
+    const [diaCorte, setDiaCorte] = useState(String(original?.diaCorte || ''));
+    const [diaPago, setDiaPago] = useState(String(original?.diaPago || ''));
+    const [errors, setErrors] = useState({});
+    const [guardando, setGuardando] = useState(false);
 
-    // ── Derivados del tipo (la pantalla no pregunta el tipo directamente) ──
     const esCredito = original?.tipo === 'credito';
-    const esSaldo   = original?.tipo === 'debito' || original?.tipo === 'efectivo';
+    const esSaldo = original?.tipo === 'debito' || original?.tipo === 'efectivo';
     const tipoLabel = {
-        credito:  'Tarjeta de crédito',
+        credito: 'Tarjeta de crédito',
         efectivo: 'Efectivo',
-        debito:   'Cuenta débito',
+        debito: 'Cuenta débito',
     }[original?.tipo] || '';
 
-    // ── Validación (sale de EditProductScreen) ────────────────────────────
     const validar = () => {
         const e = {};
         if (!nombre.trim()) e.nombre = 'El nombre no puede estar vacío.';
         if (esCredito) {
-            const cupo  = parsear(cupoDisp);
+            const cupo = parsear(cupoDisp);
             const corte = parseInt(diaCorte);
-            const pago  = parseInt(diaPago);
-            if (!cupo  || cupo  <= 0)              e.cupo     = 'Ingresa un cupo válido.';
+            const pago = parseInt(diaPago);
+            if (!cupo || cupo <= 0) e.cupo = 'Ingresa un cupo válido.';
             if (!corte || corte < 1 || corte > 31) e.diaCorte = 'Ingresa un día entre 1 y 31.';
-            if (!pago  || pago  < 1 || pago  > 31) e.diaPago  = 'Ingresa un día entre 1 y 31.';
+            if (!pago || pago < 1 || pago > 31) e.diaPago = 'Ingresa un día entre 1 y 31.';
         }
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
-    // ── Guardar (llama a editarProducto del contexto cuando exista) ────────
-    const handleGuardar = () => {
+    // ── Guardar — conectado al backend ────────────────────────────────────
+    const handleGuardar = async () => {
         if (!validar()) return;
-        // Cuando implementes editarProducto() en FinanzContext,
-        // reemplaza el Alert por:
-        // editarProducto(productoId, { nombre, saldoActual: parsear(saldoDisp), ... })
-        Alert.alert(
-            'Cambios guardados',
-            'Reemplaza este Alert por editarProducto() en FinanzContext.',
-            [{ text: 'Entendido', onPress: () => navigation.goBack() }]
-        );
+        setGuardando(true);
+
+        const datos = {
+            nombre: nombre.trim(),
+            ...(esCredito && {
+                cupoTotal: parsear(cupoDisp),
+                diaCorte: parseInt(diaCorte),
+                diaPago: parseInt(diaPago),
+            }),
+            ...(esSaldo && {
+                saldoActual: parsear(saldoDisp),
+            }),
+        };
+
+        const ok = await editarProducto(original.id, datos);
+        setGuardando(false);
+        if (ok) navigation.goBack();
     };
 
-    // ── Eliminar (sale de EditProductScreen) ──────────────────────────────
     const handleEliminar = () => {
-        Alert.alert(
-            'Eliminar producto',
-            `¿Seguro que deseas eliminar "${original?.nombre}"?`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Eliminar',
-                    style: 'destructive',
-                    onPress: () => {
-                        eliminarProducto(productoId);
-                        navigation.popToTop();
-                    },
-                },
-            ]
-        );
+        if (window.confirm(`¿Seguro que deseas eliminar "${original?.nombre}"?`)) {
+            eliminarProducto(productoId).then((ok) => {
+                if (ok) navigation.popToTop();
+            });
+        }
     };
 
-    // ── Handlers de campos ─────────────────────────────────────────────────
-    const handleNombre = (v) => {
-        setNombre(v);
-        setErrors((p) => ({ ...p, nombre: null }));
-    };
+    const handleNombre = (v) => { setNombre(v); setErrors(p => ({ ...p, nombre: null })); };
+    const handleCupo = (t) => { setCupoDisp(fmt(parsear(t)) || ''); setErrors(p => ({ ...p, cupo: null })); };
+    const handleSaldo = (t) => { setSaldoDisp(fmt(parsear(t)) || ''); };
+    const handleDiaCorte = (v) => { setDiaCorte(v.replace(/[^0-9]/g, '')); setErrors(p => ({ ...p, diaCorte: null })); };
+    const handleDiaPago = (v) => { setDiaPago(v.replace(/[^0-9]/g, '')); setErrors(p => ({ ...p, diaPago: null })); };
 
-    const handleCupo = (t) => {
-        const n = parsear(t);
-        setCupoDisp(n === '' ? '' : fmt(n));
-        setErrors((p) => ({ ...p, cupo: null }));
-    };
-
-    const handleSaldo = (t) => {
-        const n = parsear(t);
-        setSaldoDisp(n === '' ? '' : fmt(n));
-    };
-
-    const handleDiaCorte = (v) => {
-        setDiaCorte(v.replace(/[^0-9]/g, ''));
-        setErrors((p) => ({ ...p, diaCorte: null }));
-    };
-
-    const handleDiaPago = (v) => {
-        setDiaPago(v.replace(/[^0-9]/g, ''));
-        setErrors((p) => ({ ...p, diaPago: null }));
-    };
-
-    // ── Todo lo que la pantalla necesita ──────────────────────────────────
     return {
-        // datos de solo lectura del producto original
-        original,
-        tipoLabel,
-        esCredito,
-        esSaldo,
+        original, tipoLabel, esCredito, esSaldo,
         saldoUsadoFmt: fmt(original?.saldoUsado || 0),
-        // estado del formulario
-        nombre,
-        saldoDisp,
-        cupoDisp,
-        diaCorte,
-        diaPago,
-        errors,
-        // handlers
-        handleNombre,
-        handleCupo,
-        handleSaldo,
-        handleDiaCorte,
-        handleDiaPago,
-        // acciones
-        handleGuardar,
-        handleEliminar,
+        nombre, saldoDisp, cupoDisp, diaCorte, diaPago,
+        errors, guardando,
+        handleNombre, handleCupo, handleSaldo, handleDiaCorte, handleDiaPago,
+        handleGuardar, handleEliminar,
     };
 }

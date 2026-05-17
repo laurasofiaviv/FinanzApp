@@ -77,15 +77,16 @@ export function useRegisterMov() {
 
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10,  duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6,   duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6,  duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,   duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start();
   };
 
-  const handleGuardar = () => {
+  
+  const handleGuardar = async () => {
     if (!validar()) return;
 
     const base = {
@@ -97,7 +98,7 @@ export function useRegisterMov() {
     let resultado = true;
 
     if (tab === 'gasto') {
-      resultado = agregarGasto({
+      resultado = await agregarGasto({
         ...base,
         categoria: form.categoria?.label,
         descripcion: form.descripcion,
@@ -106,7 +107,7 @@ export function useRegisterMov() {
         pagoConTarjeta: tarjetaSeleccionada?.nombre ?? null,
       });
     } else if (tab === 'ingreso') {
-      agregarIngreso({
+      await agregarIngreso({
         ...base,
         motivo: form.descripcion,
         recurrente: recurrenteData,

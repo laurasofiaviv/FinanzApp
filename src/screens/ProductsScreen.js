@@ -25,9 +25,9 @@ function FranquiciaLogo({ id, size = 28, franquicias }) {
 function ProductoCard({ producto, onEliminar, tipoIcons, cupoLibre, franquicias }) {
     const icon = tipoIcons[producto.tipo] || tipoIcons.efectivo;
     const saldoUsado = producto.saldoUsado || 0;
-    const cupoTotal  = producto.cupoTotal  || 0;
-    const pct        = cupoTotal > 0 ? Math.min((saldoUsado / cupoTotal) * 100, 100) : 0;
-    const barColor   = pct > 80 ? COLORS.danger : pct > 50 ? '#F39C12' : COLORS.secondary;
+    const cupoTotal = producto.cupoTotal || 0;
+    const pct = cupoTotal > 0 ? Math.min((saldoUsado / cupoTotal) * 100, 100) : 0;
+    const barColor = pct > 80 ? COLORS.danger : pct > 50 ? '#F39C12' : COLORS.secondary;
 
     return (
         <View style={styles.prodCard}>
@@ -46,12 +46,11 @@ function ProductoCard({ producto, onEliminar, tipoIcons, cupoLibre, franquicias 
                         ? <FranquiciaLogo id={producto.franquicia} size={24} franquicias={franquicias} />
                         : null}
                     <TouchableOpacity
-                        onPress={() =>
-                            Alert.alert('Eliminar', `¿Eliminar "${producto.nombre}"?`, [
-                                { text: 'Cancelar', style: 'cancel' },
-                                { text: 'Eliminar', style: 'destructive', onPress: () => onEliminar(producto.id) },
-                            ])
-                        }
+                        onPress={() => {
+                            if (window.confirm(`¿Eliminar "${producto.nombre}"?`)) {
+                                onEliminar(producto.id);
+                            }
+                        }}
                         style={styles.deleteBtnIcon}
                     >
                         <Feather name="trash-2" size={14} color={COLORS.danger} />
@@ -190,8 +189,8 @@ export default function ProductsScreen({ navigation }) {
                             <Text style={styles.label}>TIPO</Text>
                             <View style={styles.tipoRow}>
                                 {[
-                                    { id: 'debito',   label: 'Débito' },
-                                    { id: 'credito',  label: 'Crédito' },
+                                    { id: 'debito', label: 'Débito' },
+                                    { id: 'credito', label: 'Crédito' },
                                     { id: 'efectivo', label: 'Efectivo' },
                                 ].map((t) => (
                                     <TouchableOpacity
@@ -352,7 +351,7 @@ export default function ProductsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container:    { flex: 1, backgroundColor: COLORS.background },
+    container: { flex: 1, backgroundColor: COLORS.background },
     header: {
         backgroundColor: COLORS.primary,
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
@@ -366,14 +365,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center', alignItems: 'center', marginRight: 14,
     },
-    headerText:     { flex: 1 },
-    headerTitle:    { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+    headerText: { flex: 1 },
+    headerTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
     headerSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
     profileCircle: {
         width: 42, height: 42, borderRadius: 21,
         backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
     },
-    content:    { padding: SIZES.padding, paddingBottom: 40 },
+    content: { padding: SIZES.padding, paddingBottom: 40 },
     seccion: {
         fontSize: 12, fontWeight: 'bold', color: COLORS.textLight,
         letterSpacing: 0.8, marginBottom: 10, marginTop: 4,
@@ -383,55 +382,55 @@ const styles = StyleSheet.create({
         elevation: 2, shadowColor: '#000', shadowOpacity: 0.05,
         shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     },
-    prodHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    prodLeft:    { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    prodRight:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    prodHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    prodLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    prodRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     prodIconBox: { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
-    prodNombre:  { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-    prodBanco:   { fontSize: 12, color: COLORS.textLight, marginTop: 1 },
+    prodNombre: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
+    prodBanco: { fontSize: 12, color: COLORS.textLight, marginTop: 1 },
     deleteBtnIcon: { padding: 4 },
-    creditInfo:  { marginTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 12 },
-    cupoRow:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-    cupoLabel:   { fontSize: 11, color: COLORS.textLight },
-    cupoVal:     { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
-    barBg:       { height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, marginVertical: 6 },
-    barFill:     { height: 6, borderRadius: 3 },
-    corteFecha:  { fontSize: 11, color: COLORS.textLight, marginTop: 4 },
-    logoBox:     { borderRadius: 4, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
-    logoText:    { fontWeight: 'bold', letterSpacing: 0.5 },
-    emptyBox:    { alignItems: 'center', paddingVertical: 50, paddingHorizontal: 20 },
-    emptyTitle:  { fontSize: 17, fontWeight: '600', color: COLORS.textPrimary, marginTop: 14, marginBottom: 8 },
+    creditInfo: { marginTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 12 },
+    cupoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+    cupoLabel: { fontSize: 11, color: COLORS.textLight },
+    cupoVal: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
+    barBg: { height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, marginVertical: 6 },
+    barFill: { height: 6, borderRadius: 3 },
+    corteFecha: { fontSize: 11, color: COLORS.textLight, marginTop: 4 },
+    logoBox: { borderRadius: 4, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+    logoText: { fontWeight: 'bold', letterSpacing: 0.5 },
+    emptyBox: { alignItems: 'center', paddingVertical: 50, paddingHorizontal: 20 },
+    emptyTitle: { fontSize: 17, fontWeight: '600', color: COLORS.textPrimary, marginTop: 14, marginBottom: 8 },
     emptySubtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20 },
-    emptyBtn:    { marginTop: 20, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20 },
-    emptyBtnText:{ color: COLORS.primary, fontWeight: '600' },
-    addBtnBottom:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14 },
+    emptyBtn: { marginTop: 20, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20 },
+    emptyBtnText: { color: COLORS.primary, fontWeight: '600' },
+    addBtnBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14 },
     addBtnBottomText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-    modalOverlay:{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-    modalSheet:  { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '92%' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+    modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '92%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalTitle:  { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
-    label:       { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 8, marginTop: 16 },
-    input:       { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, backgroundColor: '#FAFAFA', paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: COLORS.textPrimary },
-    inputVal:    { fontSize: 15, color: COLORS.textPrimary },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.textPrimary },
+    label: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 8, marginTop: 16 },
+    input: { borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, backgroundColor: '#FAFAFA', paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, color: COLORS.textPrimary },
+    inputVal: { fontSize: 15, color: COLORS.textPrimary },
     inputPlaceholder: { fontSize: 15, color: COLORS.textLight },
-    inputErr:    { borderColor: COLORS.danger },
-    errText:     { fontSize: 12, color: COLORS.danger, marginTop: 4 },
-    inputRow:    { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, backgroundColor: '#FAFAFA', minHeight: 50 },
-    prefix:      { paddingLeft: 14, paddingRight: 4, fontSize: 16, color: COLORS.textSecondary },
-    inputMonto:  { flex: 1, paddingVertical: 13, paddingRight: 14, fontSize: 15, color: COLORS.textPrimary },
-    tipoRow:     { flexDirection: 'row', gap: 8 },
-    tipoPill:    { flex: 1, paddingVertical: 10, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E0E0E0' },
+    inputErr: { borderColor: COLORS.danger },
+    errText: { fontSize: 12, color: COLORS.danger, marginTop: 4 },
+    inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, backgroundColor: '#FAFAFA', minHeight: 50 },
+    prefix: { paddingLeft: 14, paddingRight: 4, fontSize: 16, color: COLORS.textSecondary },
+    inputMonto: { flex: 1, paddingVertical: 13, paddingRight: 14, fontSize: 15, color: COLORS.textPrimary },
+    tipoRow: { flexDirection: 'row', gap: 8 },
+    tipoPill: { flex: 1, paddingVertical: 10, borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E0E0E0' },
     tipoPillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-    tipoPillText:   { fontSize: 14, color: COLORS.textSecondary, fontWeight: '600' },
+    tipoPillText: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '600' },
     tipoPillTextActive: { color: '#fff' },
-    franqRow:    { flexDirection: 'row', gap: 10 },
-    franqBtn:    { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
-    franqText:   { fontSize: 13, fontWeight: 'bold', letterSpacing: 0.5 },
-    twoCol:      { flexDirection: 'row' },
-    guardarBtn:  { backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 24, marginBottom: 8 },
+    franqRow: { flexDirection: 'row', gap: 10 },
+    franqBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
+    franqText: { fontSize: 13, fontWeight: 'bold', letterSpacing: 0.5 },
+    twoCol: { flexDirection: 'row' },
+    guardarBtn: { backgroundColor: COLORS.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 24, marginBottom: 8 },
     guardarText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    bancoOverlay:{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-    bancoSheet:  { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '50%' },
-    bancoItem:   { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-    bancoText:   { fontSize: 16, color: COLORS.textPrimary },
+    bancoOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+    bancoSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '50%' },
+    bancoItem: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+    bancoText: { fontSize: 16, color: COLORS.textPrimary },
 });

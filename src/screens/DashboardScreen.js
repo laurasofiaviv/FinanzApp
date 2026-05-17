@@ -208,7 +208,7 @@ export default function DashboardScreen({ navigation }) {
                     <Text style={styles.movFecha}>{mov.fecha}</Text>
                   </View>
                   <Text style={[styles.movMonto, { color: montoColor }]}>
-                    {signo}${mov.montoDisplay?.replace('$', '') || mov.monto?.toLocaleString('es-CO')}
+                    {signo}{mov.montoDisplay?.replace('$', '') || mov.monto?.toLocaleString('es-CO')}
                   </Text>
                 </View>
               );

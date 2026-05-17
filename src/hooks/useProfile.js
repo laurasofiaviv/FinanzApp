@@ -1,58 +1,74 @@
 // src/hooks/useProfile.js
-import { useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useFinanz } from '../context/FinanzContext';
+import { obtenerPerfil, actualizarPerfil } from '../services/userService';
 
-// ── Helpers puros ─────────────────────────────────────────────────────────
-export function calcularIniciales(nombre) {
-    return nombre
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
-}
-
-export function calcularCupoProducto(producto) {
-    const cupoTotal  = producto.cupoTotal  || 0;
-    const saldoUsado = producto.saldoUsado || 0;
-    const disponible = cupoTotal - saldoUsado;
-    const pct        = cupoTotal > 0 ? Math.min((saldoUsado / cupoTotal) * 100, 100) : 0;
-    const barColor   = pct > 80 ? '#E74C3C' : pct > 50 ? '#F39C12' : '#1A56E8';
-    return { disponible, pct, barColor };
-}
-
-export function formatCOP(n) {
-    if (!n && n !== 0) return '$0';
-    return '$' + Number(n).toLocaleString('es-CO');
-}
-
-// ── Hook principal ────────────────────────────────────────────────────────
 export function useProfile() {
-    const { usuario, logout } = useContext(AuthContext);
-    const { productos }       = useFinanz();
+    const { usuario, logout } = useAuth();
+    const { productos } = useFinanz();
 
-    const nombre   = usuario?.nombre || 'Juan Pérez';
-    const email    = usuario?.email  || 'admin@financify.com';
-    const initials = calcularIniciales(nombre);
+    const [nombre, setNombre] = useState('');
+    const [email, setEmail] = useState('');
+    const [cargando, setCargando] = useState(true);
+    const [guardando, setGuardando] = useState(false);
+    const [editando, setEditando] = useState(false);
 
+    // Iniciales para el avatar (ej: "Juan Pérez" → "JP")
+    const initials = nombre
+        ? nombre.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+        : (usuario?.email?.[0]?.toUpperCase() || '?');
+
+    // ── Carga inicial ────────────────────────────────────────────────────────
+    useEffect(() => {
+        (async () => {
+            try {
+                const perfil = await obtenerPerfil();
+                setNombre(perfil.nombre || '');
+                setEmail(perfil.email || usuario?.email || '');
+            } catch (e) {
+                // Si falla el backend usamos lo que ya tenemos en AuthContext
+                setEmail(usuario?.email || '');
+                console.error('Error al cargar perfil:', e.message);
+            } finally {
+                setCargando(false);
+            }
+        })();
+    }, []);
+
+    // ── Guardar nombre ───────────────────────────────────────────────────────
+    const handleGuardar = async () => {
+        if (!nombre.trim()) {
+            Alert.alert('Error', 'El nombre no puede estar vacío');
+            return;
+        }
+        setGuardando(true);
+        try {
+            await actualizarPerfil(nombre.trim());
+            setEditando(false);
+            Alert.alert('Listo', 'Perfil actualizado correctamente');
+        } catch (e) {
+            Alert.alert('Error', 'No se pudo actualizar el perfil');
+        } finally {
+            setGuardando(false);
+        }
+    };
+
+    // ── Logout ───────────────────────────────────────────────────────────────
     const handleLogout = () => {
-        Alert.alert(
-            'Cerrar sesión',
-            '¿Estás seguro de que quieres cerrar sesión?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Cerrar sesión', style: 'destructive', onPress: logout },
-            ]
-        );
+        if (window.confirm('¿Seguro que deseas cerrar sesión?')) {
+            logout();
+        }
     };
 
     return {
-        nombre, email, initials,
-        productos,
-        handleLogout,
-        calcularCupoProducto,
-        formatCOP,
+        // datos
+        nombre, email, initials, productos,
+        // estado UI
+        cargando, guardando, editando,
+        // acciones
+        setNombre, setEditando,
+        handleGuardar, handleLogout,
     };
 }

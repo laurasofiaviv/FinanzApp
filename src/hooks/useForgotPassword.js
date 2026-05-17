@@ -1,39 +1,37 @@
 // src/hooks/useForgotPassword.js
 import { useState } from 'react';
+import { forgotPassword } from '../services/authService';
 
 function esEmailValido(email) {
-    return /\S+@\S+\.\S+/.test(email);
+  return /\S+@\S+\.\S+/.test(email);
 }
 
 export function useForgotPassword() {
-    const [email,   setEmail]   = useState('');
-    const [loading, setLoading] = useState(false);
-    const [sent,    setSent]    = useState(false);
-    const [error,   setError]   = useState('');
+  const [email,   setEmail]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent,    setSent]    = useState(false);
+  const [error,   setError]   = useState('');
 
-    const handleSend = () => {
-        if (!email || !esEmailValido(email)) {
-            setError('Ingresa un correo válido');
-            return;
-        }
-        setLoading(true);
-        setError('');
-        setTimeout(() => {
-            setLoading(false);
-            setSent(true);
-            // ── Cuando conectes el backend, reemplaza esto
-            // por una llamada a tu API de recuperación ──────
-        }, 1200);
-    };
+  const handleSend = async () => {
+    if (!email || !esEmailValido(email)) {
+      setError('Ingresa un correo válido');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await forgotPassword(email);
+      setSent(true);
+    } catch {
+      setError('No se pudo enviar el correo. Verifica la dirección.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleEmailChange = (v) => {
-        setEmail(v);
-        setError('');
-    };
-
-    return {
-        email, handleEmailChange,
-        loading, sent, error,
-        handleSend,
-    };
+  return {
+    email, handleEmailChange: (v) => { setEmail(v); setError(''); },
+    loading, sent, error,
+    handleSend,
+  };
 }

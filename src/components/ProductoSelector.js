@@ -89,3 +89,5 @@ const styles = StyleSheet.create({
   },
   tarjetaInfoText: { flex: 1, fontSize: 12, color: COLORS.textSecondary },
 });
+
+

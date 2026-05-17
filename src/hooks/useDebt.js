@@ -260,6 +260,7 @@ export function useDebt() {
 
     // ── helpers de display ─────────────────────────────────────────────
     fmt,
+    parsear,
     isoADisplay,
     TIPOS_CONFIG,
     TIPOS_LIST,

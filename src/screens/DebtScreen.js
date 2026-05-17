@@ -1,4 +1,4 @@
-// screens/DebtScreen.js
+//src/ screens/DebtScreen.js
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -7,6 +7,16 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useDebt, TIPOS_CONFIG, TIPOS_LIST } from '../hooks/useDebt';
+
+function parsear(t) {
+  const d = String(t).replace(/[^0-9]/g, '');
+  return d === '' ? '' : parseInt(d, 10);
+}
+
+function fmt(n) {
+  if (!n && n !== 0) return '';
+  return Number(n).toLocaleString('es-CO');
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // COMPONENTES PUROS DE UI
@@ -25,8 +35,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
   };
 
   return (
-    <View>
-      {/* SELECTOR DE TARJETA */}
+    <>
       {campos.includes('tarjeta') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Tarjeta vinculada</Text>
@@ -74,7 +83,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* TASA DE INTERÉS */}
+      
       {campos.includes('interes') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>
@@ -94,7 +103,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* PAGO MÍNIMO */}
+      
       {campos.includes('pagoMinimo') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Pago mínimo mensual</Text>
@@ -116,7 +125,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* NÚMERO DE CUOTAS */}
+      
       {campos.includes('cuotas') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Número de cuotas</Text>
@@ -134,7 +143,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* VALOR MENSUAL (arriendo) */}
+      
       {campos.includes('valorMensual') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Valor mensual</Text>
@@ -152,7 +161,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* DÍA DE PAGO */}
+      
       {campos.includes('diaPago') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Día de pago (1-31)</Text>
@@ -171,7 +180,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* FECHA DE INICIO */}
+      
       {campos.includes('fechaInicio') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Fecha de inicio</Text>
@@ -187,7 +196,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
         </View>
       )}
 
-      {/* FECHA DE VENCIMIENTO */}
+      
       {campos.includes('fechaVencimiento') && (
         <View style={{ marginTop: 16 }}>
           <Text style={styles.label}>Fecha de vencimiento</Text>
@@ -202,7 +211,7 @@ function FormularioDinamico({ tipo, form, setField, tarjetas, errors, fmt, parse
           </View>
         </View>
       )}
-    </View>
+    </>
   );
 }
 
