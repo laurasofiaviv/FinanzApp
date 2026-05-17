@@ -9,6 +9,13 @@ import {
   editarProducto as editarProductoAPI,          // ← nuevo import
 } from '../services/productService';
 import { crearMovimiento, obtenerMovimientos } from '../services/movimientoService';
+import {
+  crearDeuda as crearDeudaAPI,
+  obtenerDeudas,
+  eliminarDeuda as eliminarDeudaAPI,
+  abonarDeuda as abonarDeudaAPI,
+} from '../services/deudaService';
+
 
 export const FinanzContext = createContext();
 
@@ -30,14 +37,18 @@ export const FinanzProvider = ({ children }) => {
         return;
       }
       try {
-        const [productosGuardados, gastosGuardados, ingresosGuardados] = await Promise.all([
-          obtenerProductos(),
-          obtenerMovimientos('gasto'),
-          obtenerMovimientos('ingreso'),
-        ]);
+        const [productosGuardados, gastosGuardados, ingresosGuardados, deudasGuardadas] =
+          await Promise.all([
+            obtenerProductos(),
+            obtenerMovimientos('gasto'),
+            obtenerMovimientos('ingreso'),
+            obtenerDeudas(),
+          ]);
         setProductos(productosGuardados);
         setGastos(gastosGuardados);
         setIngresos(ingresosGuardados);
+        setDeudas(deudasGuardadas);
+
       } catch (e) {
         console.error('Error cargando datos:', e.message);
       }
@@ -277,17 +288,16 @@ export const FinanzProvider = ({ children }) => {
   };
 
   // ── DEUDAS ───────────────────────────────────────────────────────────────
-  const agregarDeuda = (deuda) => {
-    const nuevo = {
-      ...deuda,
-      id: Date.now().toString(),
-      creadoEn: new Date().toISOString(),
-      montoPagado: 0,
-      cuotasPagadas: 0,
-      estado: 'pendiente',
-    };
-    setDeudas((prev) => [nuevo, ...prev]);
-    return nuevo;
+  const agregarDeuda = async (deuda) => {
+    try {
+      const guardada = await crearDeudaAPI(deuda);
+      setDeudas((prev) => [guardada, ...prev]);
+      return guardada;
+    } catch (e) {
+      console.error('Error al guardar deuda:', e.message);
+      Alert.alert('Error', 'No se pudo guardar la deuda');
+      return null;
+    }
   };
 
   const marcarDeudaPagada = (id) => {
@@ -300,41 +310,24 @@ export const FinanzProvider = ({ children }) => {
     }
   };
 
-  const pagarCuota = (deudaId, productoPagoId) => {
-    const deuda = deudas.find(d => d.id === deudaId);
-    const producto = productos.find(p => p.id === productoPagoId);
-    if (!deuda || !producto) { Alert.alert('Error', 'No se encontró la deuda o la cuenta'); return; }
-
-    const montoPagadoAhora = (!deuda.cuotas || deuda.cuotas <= 1)
-      ? deuda.monto - (deuda.montoPagado || 0)
-      : deuda.monto / deuda.cuotas;
-
-    if (montoPagadoAhora <= 0) { Alert.alert('Error', 'No hay nada pendiente por pagar'); return; }
-    if ((producto.saldoActual || 0) < montoPagadoAhora) {
-      Alert.alert('Saldo insuficiente', `No tienes suficiente dinero en ${producto.nombre}`);
-      return;
-    }
-
-    setDeudas(prev => prev.map(d => {
-      if (d.id !== deudaId) return d;
-      if (!d.cuotas || d.cuotas <= 1) return { ...d, montoPagado: d.monto, estado: 'pagada' };
-      const nuevasCuotasPagadas = (d.cuotasPagadas || 0) + 1;
-      return {
-        ...d,
-        cuotasPagadas: nuevasCuotasPagadas,
-        montoPagado: (d.montoPagado || 0) + d.monto / d.cuotas,
-        estado: nuevasCuotasPagadas >= d.cuotas ? 'pagada' : 'pendiente',
-      };
-    }));
-    setProductos(prev =>
-      prev.map(p => p.id === productoPagoId ? { ...p, saldoActual: (p.saldoActual || 0) - montoPagadoAhora } : p)
-    );
-    if (deuda.productoId) {
-      setProductos(prev =>
-        prev.map(p => p.id !== deuda.productoId ? p : { ...p, saldoUsado: Math.max((p.saldoUsado || 0) - montoPagadoAhora, 0) })
+  const pagarCuota = async (deudaId, productoPagoId) => {
+    try {
+      const { deuda: deudaActualizada, montoPago } =
+        await abonarDeudaAPI(deudaId, productoPagoId);
+      setDeudas((prev) =>
+        prev.map((d) => (d.id === deudaId ? deudaActualizada : d))
       );
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === productoPagoId
+            ? { ...p, saldoActual: (p.saldoActual || 0) - montoPago }
+            : p
+        )
+      );
+      Alert.alert('Pago exitoso', `Pagaste $${montoPago.toLocaleString('es-CO')}`);
+    } catch (e) {
+      Alert.alert('Error', e.message || 'No se pudo registrar el pago');
     }
-    Alert.alert('Pago exitoso', `Pagaste $${montoPagadoAhora.toLocaleString('es-CO')}`);
   };
 
   // ── ESTADÍSTICAS ─────────────────────────────────────────────────────────

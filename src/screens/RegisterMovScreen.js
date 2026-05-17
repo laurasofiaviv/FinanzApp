@@ -99,7 +99,7 @@ export default function RegisterMovScreen() {
       <View style={[styles.header, { backgroundColor: headerColor }]}>
         <Text style={styles.headerTitle}>Nuevo registro</Text>
         <View style={styles.tabRow}>
-          {['gasto', 'ingreso', 'deuda'].map((t) => (
+          {['gasto', 'ingreso'].map((t) => (
             <TouchableOpacity
               key={t}
               style={[styles.tabBtn, tab === t && styles.tabBtnActive]}

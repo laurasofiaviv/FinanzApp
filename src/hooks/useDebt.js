@@ -64,13 +64,13 @@ export const TIPOS_LIST = Object.keys(TIPOS_CONFIG);
 
 // ── CÁLCULO FINANCIERO (puro — sin estado) ────────────────────────────────
 export function calcularResumen(tipo, form) {
-  const monto   = parseFloat(form.montoNum)   || 0;
-  const interes = parseFloat(form.interes)    || 0;
-  const cuotas  = parseInt(form.cuotas)       || 1;
+  const monto = parseFloat(form.montoNum) || 0;
+  const interes = parseFloat(form.interes) || 0;
+  const cuotas = parseInt(form.cuotas) || 1;
 
   if (tipo === 'Tarjeta de crédito') {
     const nuevoSaldo = monto * (1 + interes / 100);
-    const pagoMin    = parseFloat(form.pagoMinimo) || monto * 0.05;
+    const pagoMin = parseFloat(form.pagoMinimo) || monto * 0.05;
     return {
       label: 'Saldo próximo mes',
       valor: `$${fmt(Math.round(nuevoSaldo))}`,
@@ -78,7 +78,7 @@ export function calcularResumen(tipo, form) {
     };
   }
   if (tipo === 'Préstamo bancario' && interes > 0 && cuotas > 0) {
-    const r     = interes / 100;
+    const r = interes / 100;
     const cuota = monto * (r * Math.pow(1 + r, cuotas)) / (Math.pow(1 + r, cuotas) - 1);
     return {
       label: 'Cuota mensual estimada',
@@ -98,19 +98,19 @@ export function calcularResumen(tipo, form) {
 
 // ── ESTADO INICIAL DEL FORMULARIO ─────────────────────────────────────────
 const formVacio = () => ({
-  descripcion:      '',
-  montoNum:         '',
-  montoDisplay:     '',
-  interes:          '',
-  cuotas:           '',
+  descripcion: '',
+  montoNum: '',
+  montoDisplay: '',
+  interes: '',
+  cuotas: '',
   fechaVencimiento: '',
-  fechaInicio:      '',
-  diaPago:          '',
-  pagoMinimo:       '',
-  pagoMinimoDisplay:'',
-  tarjetaId:        null,
-  tarjetaNombre:    null,
-  cupoDisponible:   0,
+  fechaInicio: '',
+  diaPago: '',
+  pagoMinimo: '',
+  pagoMinimoDisplay: '',
+  tarjetaId: null,
+  tarjetaNombre: null,
+  cupoDisponible: 0,
 });
 
 // ── HOOK PRINCIPAL ────────────────────────────────────────────────────────
@@ -121,14 +121,14 @@ export function useDebt() {
   const tarjetas = (productos || []).filter((p) => p.tipo === 'credito');
 
   // ── Estado de UI ──────────────────────────────────────────────────────
-  const [showForm,        setShowForm]        = useState(false);
-  const [showTipos,       setShowTipos]       = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [showTipos, setShowTipos] = useState(false);
   const [showModalAbonar, setShowModalAbonar] = useState(false);
 
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
-  const [form,             setFormState]         = useState(formVacio());
-  const [errors,           setErrors]            = useState({});
-  const [deudaAbonar,      setDeudaAbonar]       = useState(null);
+  const [form, setFormState] = useState(formVacio());
+  const [errors, setErrors] = useState({});
+  const [deudaAbonar, setDeudaAbonar] = useState(null);
 
   // ── Helpers de form ───────────────────────────────────────────────────
   const setField = (k, v) => setFormState((prev) => ({ ...prev, [k]: v }));
@@ -151,7 +151,7 @@ export function useDebt() {
   const validar = () => {
     const e = {};
     if (!form.montoNum || form.montoNum <= 0) e.monto = 'Ingresa un monto';
-    if (!tipoSeleccionado)                    e.tipo  = 'Selecciona un tipo';
+    if (!tipoSeleccionado) e.tipo = 'Selecciona un tipo';
 
     if (tipoSeleccionado === 'Tarjeta de crédito' && form.tarjetaId) {
       if (form.cupoDisponible < form.montoNum) {
@@ -163,26 +163,26 @@ export function useDebt() {
   };
 
   // ── Guardar deuda ─────────────────────────────────────────────────────
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     if (!validar()) return;
-
-    agregarDeuda({
-      tipo:            tipoSeleccionado,
-      descripcion:     form.descripcion || '',
-      monto:           form.montoNum,
-      montoDisplay:    '$' + (form.montoDisplay || fmt(form.montoNum)),
-      fecha:           isoADisplay(hoyISO()),
-      interes:         form.interes      || '0',
-      cuotas:          form.cuotas       || '1',
-      fechaVencimiento:form.fechaVencimiento || '',
-      diaPago:         form.diaPago      || '',
-      tarjetaId:       form.tarjetaId    || null,
-      tarjetaNombre:   form.tarjetaNombre|| null,
-      pagoMinimo:      form.pagoMinimo   || 0,
+    const ok = await agregarDeuda({
+      tipo: tipoSeleccionado,
+      descripcion: form.descripcion || '',
+      monto: parseFloat(form.montoNum),
+      montoDisplay: '$' + (form.montoDisplay || fmt(form.montoNum)),
+      interes: form.interes || '0',
+      cuotas: form.cuotas || '1',
+      fechaVencimiento: form.fechaVencimiento || '',
+      fechaInicio: form.fechaInicio || '',
+      diaPago: form.diaPago || '',
+      tarjetaId: form.tarjetaId || null,
+      tarjetaNombre: form.tarjetaNombre || null,
+      pagoMinimo: parseFloat(form.pagoMinimo) || 0,
     });
-
-    resetForm();
-    setShowForm(false);
+    if (ok) {
+      resetForm();
+      setShowForm(false);
+    }
   };
 
   // ── Abonar ────────────────────────────────────────────────────────────
@@ -214,8 +214,8 @@ export function useDebt() {
 
   // ── Derivaciones de deudas ────────────────────────────────────────────
   const deudasPendientes = deudas.filter((d) => (d.montoPagado || 0) < d.monto);
-  const deudasPagadas    = deudas.filter((d) => (d.montoPagado || 0) >= d.monto);
-  const totalPendiente   = deudasPendientes.reduce(
+  const deudasPagadas = deudas.filter((d) => (d.montoPagado || 0) >= d.monto);
+  const totalPendiente = deudasPendientes.reduce(
     (acc, d) => acc + parseFloat(d.monto || 0) - parseFloat(d.montoPagado || 0),
     0,
   );

@@ -86,11 +86,11 @@ object ProductoController {
         try {
             val body = call.receive<Map<String, JsonElement>>()
             val datos = buildMap<String, Any?> {
-                body["nombre"]?.jsonPrimitive?.contentOrNull?.let      { put("nombre", it) }
-                body["cupoTotal"]?.jsonPrimitive?.doubleOrNull?.let    { put("cupoTotal", it) }
+                body["nombre"]?.jsonPrimitive?.contentOrNull?.let { put("nombre", it) }
+                body["cupoTotal"]?.jsonPrimitive?.doubleOrNull?.let { put("cupoTotal", it) }
                 body["diaCorte"]?.jsonPrimitive?.longOrNull?.toInt()?.let { put("diaCorte", it) }
-                body["diaPago"]?.jsonPrimitive?.longOrNull?.toInt()?.let  { put("diaPago", it) }
-                body["saldoActual"]?.jsonPrimitive?.doubleOrNull?.let  { put("saldoActual", it) }
+                body["diaPago"]?.jsonPrimitive?.longOrNull?.toInt()?.let { put("diaPago", it) }
+                body["saldoActual"]?.jsonPrimitive?.doubleOrNull?.let { put("saldoActual", it) }
             }
             val actualizado = ProductoRepository.actualizar(uid, id, datos)  // ← import resuelto
             call.respond(HttpStatusCode.OK, actualizado)
@@ -99,4 +99,6 @@ object ProductoController {
             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Error")))
         }
     }
+
+
 }

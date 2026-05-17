@@ -61,4 +61,23 @@ object ProductoRepository {
                 creadoEn = updated.getLong("creadoEn") ?: System.currentTimeMillis(),
             )
         }
+
+    suspend fun obtenerPorId(uid: String, id: String): Producto? = withContext(Dispatchers.IO) {
+        val doc = coleccion(uid).document(id).get().get()
+        if (!doc.exists()) return@withContext null
+        Producto(
+            id = doc.id,
+            uid = doc.getString("uid") ?: "",
+            tipo = doc.getString("tipo") ?: "",
+            nombre = doc.getString("nombre") ?: "",
+            banco = doc.getString("banco") ?: "",
+            franquicia = doc.getString("franquicia"),
+            cupoTotal = doc.getDouble("cupoTotal"),
+            diaCorte = doc.getLong("diaCorte")?.toInt(),
+            diaPago = doc.getLong("diaPago")?.toInt(),
+            saldoActual = doc.getDouble("saldoActual") ?: 0.0,
+            saldoUsado = doc.getDouble("saldoUsado") ?: 0.0,
+            creadoEn = doc.getLong("creadoEn") ?: System.currentTimeMillis(),
+        )
+    }
 }
