@@ -14,6 +14,7 @@ import {
   obtenerDeudas,
   eliminarDeuda as eliminarDeudaAPI,
   abonarDeuda as abonarDeudaAPI,
+  actualizarDeuda as actualizarDeudaAPI,
 } from '../services/deudaService';
 
 
@@ -129,27 +130,32 @@ export const FinanzProvider = ({ children }) => {
       const nuevo = { ...productoGuardado, saldoUsado: 0, deudaId: null };
 
       if (producto.tipo === 'credito') {
-        const deudaId = productoGuardado.id + '_deuda';
-        nuevo.deudaId = deudaId;
-        setDeudas((prev) => [{
-          id: deudaId,
+        const deudaEspejoData = {
           productoId: productoGuardado.id,
           tipo: 'Tarjeta de crédito',
           descripcion: producto.nombre,
           monto: 0,
+          montoDisplay: '$0',
           cupoTotal: producto.cupoTotal || 0,
-          diaCorte: producto.diaCorte,
-          diaPago: producto.diaPago,
-          franquicia: producto.franquicia,
+          diaCorte: String(producto.diaCorte || ''),
+          diaPago: String(producto.diaPago || ''),
+          franquicia: producto.franquicia || '',
           montoPagado: 0,
           cuotasPagadas: 0,
-          cuotas: 1,
+          cuotas: '1',
+          interes: '0',
+          pagoMinimo: 0,
           esEspejo: true,
-          creadoEn: new Date().toISOString(),
           estado: 'pendiente',
           fechaVencimiento: proximaFechaPago(producto.diaPago),
-        }, ...prev]);
+        };
+
+        // Guardar en Firestore
+        const deudaGuardada = await crearDeudaAPI(deudaEspejoData);
+        nuevo.deudaId = deudaGuardada.id;
+        setDeudas((prev) => [deudaGuardada, ...prev]);
       }
+
 
       setProductos((prev) => [nuevo, ...prev]);
       return nuevo;
@@ -189,20 +195,33 @@ export const FinanzProvider = ({ children }) => {
   };
 
   // ── GASTO EN TARJETA ─────────────────────────────────────────────────────
-  const cargarGastoATarjeta = (productoId, monto) => {
+  const cargarGastoATarjeta = async (productoId, monto) => {
     const producto = productos.find((p) => p.id === productoId);
     if (!producto) return;
     if ((producto.saldoUsado || 0) + monto > producto.cupoTotal) {
       Alert.alert('Cupo excedido', `Estás superando el límite de ${producto.nombre}`);
       return;
     }
+
+    // Actualizar saldoUsado del producto en Firestore
+    await editarProductoAPI(productoId, { saldoUsado: (producto.saldoUsado || 0) + monto });
+
     setProductos((prev) =>
       prev.map((p) => p.id !== productoId ? p : { ...p, saldoUsado: (p.saldoUsado || 0) + monto })
     );
+
+    // Actualizar deuda espejo en Firestore
     if (producto?.deudaId) {
-      setDeudas((prev) =>
-        prev.map((d) => d.id !== producto.deudaId ? d : { ...d, monto: (d.monto || 0) + monto })
-      );
+      const deudaEspejo = deudas.find(d => d.id === producto.deudaId);
+      if (deudaEspejo) {
+        const nuevoMonto = (deudaEspejo.monto || 0) + monto;
+        // Actualizar en Firestore
+        await actualizarDeudaAPI(producto.deudaId, { monto: nuevoMonto });
+        // Actualizar en memoria
+        setDeudas((prev) =>
+          prev.map((d) => d.id !== producto.deudaId ? d : { ...d, monto: nuevoMonto })
+        );
+      }
     }
   };
 

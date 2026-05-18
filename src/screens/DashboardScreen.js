@@ -1,5 +1,5 @@
 //DashboardScreen.js
-import React, { useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, StatusBar, Platform,
@@ -9,6 +9,8 @@ import { useFinanz } from '../context/FinanzContext';
 import { COLORS, SIZES } from '../constants/Colors';
 import { Feather } from '@expo/vector-icons';
 import { useAlertas } from '../hooks/useAlertas';
+import { obtenerPerfil } from '../services/userService';
+
 
 const CATEGORIA_ICON = {
   'Alimentación': 'shopping-cart',
@@ -39,15 +41,17 @@ export default function DashboardScreen({ navigation }) {
   } = useFinanz();
   const { alertas, hayUrgentes } = useAlertas();
 
-  const userName = usuario?.nombre || 'Juan Pérez';
+  const [userName, setUserName] = useState('');
 
+  useEffect(() => {
+    obtenerPerfil()
+      .then((perfil) => setUserName(perfil.nombre || usuario?.email?.split('@')[0] || ''))
+      .catch(() => setUserName(usuario?.email?.split('@')[0] || ''));
+  }, []);
 
   const initials = userName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
+    ? userName.trim().split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : (usuario?.email?.[0]?.toUpperCase() || '?');
 
   const balance = balanceMes();
   const ingresos = totalIngresosMes();
@@ -226,9 +230,33 @@ export default function DashboardScreen({ navigation }) {
                     </Text>
                   ) : null}
                   {alerta.navegarA && (
-                    <Text style={{ fontSize: 11, color: alerta.color, marginTop: 3, fontWeight: '600' }}>
-                      Ir a pagar →
-                    </Text>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        marginTop: 6,
+                        backgroundColor: alerta.color + '15',
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 8,
+                        alignSelf: 'flex-start',
+                        borderWidth: 1,
+                        borderColor: alerta.color + '40',
+                      }}
+                      onPress={() => navigation.navigate(alerta.navegarA)}
+                    >
+                      <Feather name="credit-card" size={11} color={alerta.color} />
+                      <Text style={{
+                        fontSize: 11,
+                        color: alerta.color,
+                        fontWeight: '700',
+                        letterSpacing: 0.3,
+                      }}>
+                        Pagar ahora
+                      </Text>
+
+                    </TouchableOpacity>
                   )}
                   {alerta.accionRegistrar && (
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>

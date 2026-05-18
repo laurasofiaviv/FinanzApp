@@ -5,7 +5,7 @@ import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario] = useState(null);
+  const [usuario, setUsuario] = useState(undefined);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -36,10 +36,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  if (cargando) return null;
 
   return (
-      <AuthContext.Provider value={{ usuario, login, logout }}>
+      <AuthContext.Provider value={{ usuario, login, logout, cargando }}>
         {children}
       </AuthContext.Provider>
   );

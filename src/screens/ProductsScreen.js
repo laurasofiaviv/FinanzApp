@@ -1,5 +1,5 @@
 // ProductsScreen.js
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
     TextInput, Modal, FlatList, StatusBar, Platform, Alert,
@@ -7,6 +7,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useProducts } from '../hooks/useProducts';
+import ConfirmModal from '../components/ConfirmModal';
 
 // ── COMPONENTE LOGO FRANQUICIA ────────────────────────────────────────────
 function FranquiciaLogo({ id, size = 28, franquicias }) {
@@ -22,7 +23,7 @@ function FranquiciaLogo({ id, size = 28, franquicias }) {
 }
 
 // ── COMPONENTE TARJETA PRODUCTO ───────────────────────────────────────────
-function ProductoCard({ producto, onEliminar, tipoIcons, cupoLibre, franquicias }) {
+function ProductoCard({ producto, onEliminar, onPedirConfirmacion, tipoIcons, cupoLibre, franquicias }) {
     const icon = tipoIcons[producto.tipo] || tipoIcons.efectivo;
     const saldoUsado = producto.saldoUsado || 0;
     const cupoTotal = producto.cupoTotal || 0;
@@ -46,11 +47,7 @@ function ProductoCard({ producto, onEliminar, tipoIcons, cupoLibre, franquicias 
                         ? <FranquiciaLogo id={producto.franquicia} size={24} franquicias={franquicias} />
                         : null}
                     <TouchableOpacity
-                        onPress={() => {
-                            if (window.confirm(`¿Eliminar "${producto.nombre}"?`)) {
-                                onEliminar(producto.id);
-                            }
-                        }}
+                        onPress={() => onPedirConfirmacion(producto)}
                         style={styles.deleteBtnIcon}
                     >
                         <Feather name="trash-2" size={14} color={COLORS.danger} />
@@ -104,6 +101,7 @@ export default function ProductsScreen({ navigation }) {
         setShowBancos, eliminarProducto, cupoLibre,
         FRANQUICIAS, BANCOS_CO, TIPO_ICONS,
     } = useProducts();
+    const [productoAEliminar, setProductoAEliminar] = useState(null);
 
     return (
         <View style={styles.container}>
@@ -130,6 +128,7 @@ export default function ProductsScreen({ navigation }) {
                             <ProductoCard
                                 key={p.id} producto={p}
                                 onEliminar={eliminarProducto}
+                                onPedirConfirmacion={(p) => setProductoAEliminar(p)}
                                 tipoIcons={TIPO_ICONS}
                                 cupoLibre={cupoLibre}
                                 franquicias={FRANQUICIAS}
@@ -145,6 +144,7 @@ export default function ProductsScreen({ navigation }) {
                             <ProductoCard
                                 key={p.id} producto={p}
                                 onEliminar={eliminarProducto}
+                                onPedirConfirmacion={(p) => setProductoAEliminar(p)}
                                 tipoIcons={TIPO_ICONS}
                                 cupoLibre={cupoLibre}
                                 franquicias={FRANQUICIAS}
@@ -346,6 +346,23 @@ export default function ProductsScreen({ navigation }) {
                     />
                 </View>
             </Modal>
+            <ConfirmModal
+                visible={!!productoAEliminar}
+                icon="trash-outline"
+                iconColor="#A32D2D"
+                iconBg="#FCEBEB"
+                title="¿Eliminar producto?"
+                message={`Se eliminará "${productoAEliminar?.nombre}" permanentemente. Esta acción no se puede deshacer.`}
+                confirmText="Sí, eliminar"
+                cancelText="Cancelar"
+                confirmColor="#A32D2D"
+                onConfirm={() => {
+                    eliminarProducto(productoAEliminar.id);
+                    setProductoAEliminar(null);
+                }}
+                onCancel={() => setProductoAEliminar(null)}
+            />
+
         </View>
     );
 }

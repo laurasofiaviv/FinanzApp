@@ -22,7 +22,11 @@ data class Deuda(
     val tarjetaNombre: String? = null,
     val pagoMinimo: Double = 0.0,
     val estado: String = "pendiente",
-    val creadoEn: Long = System.currentTimeMillis()
+    val creadoEn: Long = System.currentTimeMillis(),
+    val esEspejo: Boolean = false,
+    val productoId: String? = null,
+    val cupoTotal: Double = 0.0,
+    val franquicia: String? = null,
 )
 
 @Serializable

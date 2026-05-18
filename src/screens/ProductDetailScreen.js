@@ -144,10 +144,6 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Text style={styles.editBtnText}>Editar producto</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleEliminar}>
-            <Ionicons name="trash-outline" size={17} color="#A32D2D" style={{ marginRight: 8 }} />
-            <Text style={styles.deleteBtnText}>Eliminar producto</Text>
-          </TouchableOpacity>
 
           <View style={{ height: 40 }} />
         </ScrollView>

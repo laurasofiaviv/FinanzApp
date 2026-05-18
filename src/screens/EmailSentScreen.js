@@ -7,7 +7,7 @@ import {
 import { getAuth, sendEmailVerification, signOut } from 'firebase/auth';
 import { COLORS, SIZES } from '../constants/Colors';
 
-export default function EmailSentScreen({ route }) {
+export default function EmailSentScreen({ route, navigation }) {
   const { email } = route.params;
   const intervalRef = useRef(null);
 
@@ -50,8 +50,14 @@ export default function EmailSentScreen({ route }) {
   };
 
   // ── Ir a login manualmente ────────────────────────────────────────────────
-  const handleIrALogin =() => {
-    navigation.navigate('Login');
+  const handleIrALogin = async () => {
+    try {
+      await signOut(getAuth());
+      // AppNavigator detecta usuario=null → muestra AuthStack → initialRoute="Welcome"
+      // No necesitas navigation.navigate() para nada
+    } catch (e) {
+      console.error('Error al cerrar sesión:', e.message);
+    }
   };
 
   const handleRegisterPress = () => {

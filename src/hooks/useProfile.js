@@ -1,3 +1,4 @@
+//hooks/useProfile
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';

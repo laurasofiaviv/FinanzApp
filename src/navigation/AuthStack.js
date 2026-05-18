@@ -16,7 +16,6 @@ export default function AuthStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome"        component={WelcomeScreen} />
       <Stack.Screen name="AuthOptions"    component={LoginScreen} />
-      <Stack.Screen name="Login"          component={LoginScreen} />
       <Stack.Screen name="LoginForm"      component={LoginFormScreen} />
       <Stack.Screen name="Register"       component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

@@ -201,4 +201,30 @@ object DeudaController {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Error")))
         }
     }
+
+    suspend fun actualizar(call: ApplicationCall) {
+        val uid = getUid(call) ?: run {
+            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Token requerido"))
+            return
+        }
+        val id = call.parameters["id"] ?: run {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID requerido"))
+            return
+        }
+        try {
+            // Recibir como Deuda parcial — más simple que JsonElement
+            val body = call.receive<Deuda>()
+            val datos = mutableMapOf<String, Any?>()
+            if (body.monto > 0) datos["monto"] = body.monto
+            if (body.montoPagado > 0) datos["montoPagado"] = body.montoPagado
+            if (body.estado.isNotEmpty()) datos["estado"] = body.estado
+
+            val actualizada = DeudaRepository.actualizar(uid, id, datos)
+            call.respond(HttpStatusCode.OK, actualizada)
+        } catch (e: Exception) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "Error")))
+        }
+    }
+
+
 }

@@ -18,6 +18,7 @@ import io.ktor.server.plugins.cors.routing.*
 import io.ktor.http.*
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import com.finanzapp.routes.usuarioRoutes
 
 
 fun main(args: Array<String>) {
@@ -59,4 +60,5 @@ fun Application.module() {
     userRoutes()
     deudaRoutes()
     reporteRoutes()
+    usuarioRoutes()
 }

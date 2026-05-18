@@ -12,6 +12,7 @@ fun Application.deudaRoutes() {
             get("/")          { DeudaController.listar(call) }
             delete("/{id}")   { DeudaController.eliminar(call) }
             post("/{id}/abonar") { DeudaController.abonar(call) }
+            put("/{id}") { DeudaController.actualizar(call) }
         }
     }
 }

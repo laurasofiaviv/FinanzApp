@@ -1,3 +1,4 @@
+//services/finanzService.js
 export const calcularTotalMes = (items) => {
   const ahora = new Date();
 
