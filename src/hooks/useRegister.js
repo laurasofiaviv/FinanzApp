@@ -24,7 +24,7 @@ export function useRegister(navigation) {
   const passRef    = useRef(null);
   const confirmRef = useRef(null);
 
-  const rulesPassed   = PASSWORD_RULES.filter(r => r.test(password)).length;
+  const rulesPassed    = PASSWORD_RULES.filter(r => r.test(password)).length;
   const allRulesPassed = rulesPassed === PASSWORD_RULES.length;
 
   const limpiarError = (campo) => setErrors((p) => ({ ...p, [campo]: null }));
@@ -43,21 +43,36 @@ export function useRegister(navigation) {
     if (!validar()) return;
     setLoading(true);
     try {
-      console.log('Intentando registrar...');
+      // Guardamos el email antes del signOut para pasarlo a la pantalla
+      const emailRegistrado = email;
       await registerUser({ nombre, email, password });
-      console.log('Registro exitoso, navegando...');
-      navigation.navigate('EmailSent', { email });
+
+      // Navegamos ANTES de que el signOut cause re-renders
+      navigation.navigate('EmailSent', { email: emailRegistrado });
     } catch (e) {
-      console.log('ERROR:', e.message); 
-      setErrors({ general: e.message || 'Error al registrarse' });
+      const msg = e.message || '';
+
+      if (msg.includes('email-already-in-use')) {
+        setErrors({ email: 'Este correo ya está registrado. ¿Olvidaste tu contraseña?' });
+      } else if (msg.includes('invalid-email')) {
+        setErrors({ email: 'El correo no tiene un formato válido' });
+      } else if (msg.includes('weak-password')) {
+        setErrors({ password: 'La contraseña es muy débil' });
+      } else if (msg.includes('network-request-failed')) {
+        setErrors({ general: 'Sin conexión. Verifica tu red e intenta de nuevo.' });
+      } else {
+        setErrors({ general: msg || 'Error al registrarse. Intenta de nuevo.' });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return {
-    nombre, setNombre, email, setEmail,
-    password, setPassword, confirm, setConfirm,
+    nombre,   setNombre,
+    email,    setEmail,
+    password, setPassword,
+    confirm,  setConfirm,
     showPass, setShowPass: () => setShowPass(v => !v),
     showConf, setShowConf: () => setShowConf(v => !v),
     loading, errors, showStrength, setShowStrength,

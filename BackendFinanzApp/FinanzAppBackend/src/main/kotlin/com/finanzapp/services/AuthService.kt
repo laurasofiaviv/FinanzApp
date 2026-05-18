@@ -1,7 +1,6 @@
 package com.finanzapp.services
 
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.UserRecord
 import com.finanzapp.models.AuthResponse
 import com.finanzapp.models.RegisterRequest
 import com.finanzapp.models.User
@@ -11,65 +10,65 @@ import kotlinx.coroutines.withContext
 
 object AuthService {
 
+    // ── REGISTRO ──────────────────────────────────────────────────────────
+    // El cliente ya creó la cuenta en Firebase y envió el correo de verificación.
+    // El backend solo verifica el token y guarda los datos en Firestore.
     suspend fun register(req: RegisterRequest): AuthResponse = withContext(Dispatchers.IO) {
-        val createRequest = UserRecord.CreateRequest()
-            .setEmail(req.email)
-            .setPassword(req.password)
-            .setDisplayName(req.nombre)
-            .setEmailVerified(false)
+        val idToken = req.idToken
+            ?: throw IllegalArgumentException("idToken es requerido")
 
-        val userRecord = FirebaseAuth.getInstance()
-            .createUserAsync(createRequest)
-            .get()  // ApiFuture.get()
-
-        FirebaseAuth.getInstance()
-            .generateEmailVerificationLinkAsync(req.email)
+        // Verificar que el token sea válido y obtener el uid real
+        val decoded = FirebaseAuth.getInstance()
+            .verifyIdTokenAsync(idToken)
             .get()
 
         val user = User(
-            uid = userRecord.uid,
+            uid    = decoded.uid,
             nombre = req.nombre,
-            email = req.email
+            email  = req.email
         )
         UserRepository.guardarUsuario(user)
 
         AuthResponse(
-            uid = userRecord.uid,
-            email = userRecord.email ?: "",
-            nombre = req.nombre,
-            message = "Usuario creado. Revisa tu correo para verificar la cuenta."
+            uid     = decoded.uid,
+            email   = req.email,
+            nombre  = req.nombre,
+            message = "Usuario registrado. Revisa tu correo para verificar la cuenta."
         )
     }
 
+    // ── LOGIN ─────────────────────────────────────────────────────────────
     suspend fun login(idToken: String): AuthResponse = withContext(Dispatchers.IO) {
         val decoded = FirebaseAuth.getInstance()
             .verifyIdTokenAsync(idToken)
-            .get()  // ApiFuture.get()
+            .get()
 
-        val uid = decoded.uid
+        val uid  = decoded.uid
         val user = UserRepository.obtenerUsuario(uid)
 
         AuthResponse(
-            uid = uid,
-            email = decoded.email ?: "",
-            nombre = user?.nombre ?: decoded.name ?: "",
+            uid     = uid,
+            email   = decoded.email ?: "",
+            nombre  = user?.nombre ?: decoded.name ?: "",
             message = "Login exitoso"
         )
     }
 
+    // ── FORGOT PASSWORD ───────────────────────────────────────────────────
+    // Ya no se usa desde el backend — el cliente llama sendPasswordResetEmail()
+    // directamente. Se mantiene por compatibilidad.
     suspend fun forgotPassword(email: String): String = withContext(Dispatchers.IO) {
         FirebaseAuth.getInstance()
             .generatePasswordResetLinkAsync(email)
-            .get()  // ApiFuture.get()
-
+            .get()
         "Correo de recuperación enviado a $email"
     }
+
+    // ── VERIFICAR TOKEN ───────────────────────────────────────────────────
     suspend fun verificarToken(idToken: String): String = withContext(Dispatchers.IO) {
         val decoded = FirebaseAuth.getInstance()
             .verifyIdTokenAsync(idToken)
             .get()
         decoded.uid
     }
-
-
 }

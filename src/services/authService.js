@@ -9,7 +9,6 @@ import {
 } from 'firebase/auth';
 import API_URL from '../config/api';
 
-// ── Configura con tus datos de Firebase Console ───────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyBoZBFHeyWj_vkQfsF-otA_0y6N28yMgQw",
   authDomain: "finanzapp-8def8.firebaseapp.com",
@@ -23,45 +22,47 @@ if (!getApps().length) initializeApp(firebaseConfig);
 
 const auth = getAuth();
 
-// URL de tu backend Ktor (en desarrollo usa tu IP local, no localhost)
-
 // ── REGISTRO ──────────────────────────────────────────────────────────────────
 export async function registerUser({ nombre, email, password }) {
+  // 1. Firebase cliente crea la cuenta
+  const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+  // 2. Envía el correo de verificación
+  await sendEmailVerification(credential.user);
+
+  // 3. Guarda en Firestore via backend
+  const idToken = await credential.user.getIdToken();
   const res = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre, email, password }),
+    body: JSON.stringify({ nombre, email, password, idToken }),
   });
+
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error en el registro');
   }
-  return res.json(); // { uid, email, nombre, message }
+
+  // Sin signOut — AppNavigator detecta emailVerified=false y muestra EmailSent
+  return await res.json();
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 export async function loginUser({ email, password }) {
-  // 1. Firebase SDK hace el login y nos da el idToken
   const credential = await signInWithEmailAndPassword(auth, email, password);
   const idToken = await credential.user.getIdToken();
 
-  // 2. Mandamos el token al backend para verificar y obtener datos del usuario
   const res = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
   });
   if (!res.ok) throw new Error('Error al verificar sesión');
-  return res.json(); // { uid, email, nombre, message }
+  return res.json();
 }
 
 // ── RECUPERAR CONTRASEÑA ──────────────────────────────────────────────────────
 export async function forgotPassword(email) {
-  const res = await fetch(`${API_URL}/auth/forgot-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  });
-  if (!res.ok) throw new Error('No se pudo enviar el correo');
-  return res.json();
+  await sendPasswordResetEmail(auth, email);
+  return { message: `Correo de recuperación enviado a ${email}` };
 }

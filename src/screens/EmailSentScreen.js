@@ -1,67 +1,104 @@
-//screens/EmailSentScreen.js
-import React from 'react';
+// screens/EmailSentScreen.js
+import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Image, ScrollView, StatusBar
+  Image, ScrollView, StatusBar, Alert
 } from 'react-native';
+import { getAuth, sendEmailVerification, signOut } from 'firebase/auth';
 import { COLORS, SIZES } from '../constants/Colors';
 
-export default function EmailSentScreen({ route, navigation }) {
+export default function EmailSentScreen({ route }) {
   const { email } = route.params;
+  const intervalRef = useRef(null);
+
+  // ── Polling: revisa cada 3s si el usuario ya verificó su correo ──────────
+  useEffect(() => {
+    const auth = getAuth();
+
+    intervalRef.current = setInterval(async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Fuerza a Firebase a recargar el estado del usuario desde el servidor
+        await user.reload();
+
+        if (user.emailVerified) {
+          clearInterval(intervalRef.current);
+          // onAuthStateChanged se dispara automáticamente →
+          // AppNavigator detecta emailVerified=true → muestra MainStack
+        }
+      } catch (e) {
+        console.error('Error recargando usuario:', e.message);
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  // ── Reenviar correo ───────────────────────────────────────────────────────
+  const handleReenviar = async () => {
+    try {
+      const user = getAuth().currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        Alert.alert('Correo reenviado', 'Revisa tu bandeja de entrada');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo reenviar el correo. Espera un momento e intenta de nuevo.');
+    }
+  };
+
+  // ── Ir a login manualmente ────────────────────────────────────────────────
+  const handleIrALogin =() => {
+    navigation.navigate('Login');
+  };
+
+  const handleRegisterPress = () => {
+    navigation.navigate('Register');
+  };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
-      {/* Logo + nombre app — idéntico a todas las pantallas */}
-      <View style={styles.topSection}>
-        <Image
-          source={require('../../assets/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.appName}>FinanzApp</Text>
-      </View>
-
-      {/* Ícono de éxito — igual que RegisterSuccess */}
-      <View style={styles.successIconWrapper}>
-        <Image
-          source={require('../../assets/successfull.png')}
-          style={styles.successIcon}
-          resizeMode="contain"
-        />
-      </View>
-
-      {/* Título */}
-      <Text style={styles.title}>¡Revisa tu correo!</Text>
-
-      {/* Descripción */}
-      <Text style={styles.subtitle}>
-        Enviamos un enlace de verificación a:
-      </Text>
-      <Text style={styles.email}>{email}</Text>
-      <Text style={styles.note}>
-        Una vez que verifiques tu correo, podrás iniciar sesión.{'\n'}
-        Revisa también tu carpeta de spam.
-      </Text>
-
-      {/* Botón principal */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('AuthOptions')}
+      <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.buttonText}>Ir a iniciar sesión</Text>
-      </TouchableOpacity>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* Link reenviar — subrayado, igual que "Regresar al Login" */}
-      <TouchableOpacity style={styles.resendLink}>
-        <Text style={styles.resendText}>¿No recibiste el correo? Reenviar</Text>
-      </TouchableOpacity>
+        <View style={styles.topSection}>
+          <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+          />
+          <Text style={styles.appName}>FinanzApp</Text>
+        </View>
 
-    </ScrollView>
+        <View style={styles.successIconWrapper}>
+          <Image
+              source={require('../../assets/successfull.png')}
+              style={styles.successIcon}
+              resizeMode="contain"
+          />
+        </View>
+
+        <Text style={styles.title}>¡Revisa tu correo!</Text>
+
+        <Text style={styles.subtitle}>Enviamos un enlace de verificación a:</Text>
+        <Text style={styles.email}>{email}</Text>
+        <Text style={styles.note}>
+          Una vez que verifiques tu correo, entrarás automáticamente.{'\n'}
+          Revisa también tu carpeta de spam.
+        </Text>
+
+        <TouchableOpacity style={styles.button} onPress={handleIrALogin}>
+          <Text style={styles.buttonText}>Ir a iniciar sesión</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.resendLink} onPress={handleReenviar}>
+          <Text style={styles.resendText}>¿No recibiste el correo? Reenviar</Text>
+        </TouchableOpacity>
+      </ScrollView>
   );
 }
 
@@ -75,64 +112,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // ── Top section — idéntico a todas las pantallas ────────────────────────
-  topSection: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logo: {
-    width: 70,
-    height: 70,
-    marginBottom: 8,
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-  },
-
-  // ── Success icon — mismo estilo que RegisterSuccess ─────────────────────
-  successIconWrapper: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  successIcon: {
-    width: 100,
-    height: 100,
-  },
-
-  // ── Textos ──────────────────────────────────────────────────────────────
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  email: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginVertical: 8,
-    textAlign: 'center',
-  },
-  note: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 40,
-    paddingHorizontal: 10,
-  },
-
-  // ── Botón — idéntico a todas las pantallas ──────────────────────────────
+  topSection:        { alignItems: 'center', marginBottom: 20 },
+  logo:              { width: 70, height: 70, marginBottom: 8 },
+  appName:           { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 6 },
+  successIconWrapper:{ alignItems: 'center', marginBottom: 20 },
+  successIcon:       { width: 100, height: 100 },
+  title:             { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary, textAlign: 'center', marginBottom: 12 },
+  subtitle:          { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center' },
+  email:             { fontSize: 15, fontWeight: 'bold', color: COLORS.primary, marginVertical: 8, textAlign: 'center' },
+  note:              { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 40, paddingHorizontal: 10 },
   button: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
@@ -146,20 +134,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     marginBottom: 20,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  // ── Link reenviar — subrayado, igual que "Regresar al Login" ───────────
-  resendLink: {
-    alignItems: 'center',
-  },
-  resendText: {
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
-  },
+  buttonText:  { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  resendLink:  { alignItems: 'center' },
+  resendText:  { fontSize: 14, color: COLORS.textPrimary, fontWeight: 'bold', textDecorationLine: 'underline' },
 });

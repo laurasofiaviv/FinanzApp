@@ -13,6 +13,8 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useLoginForm } from '../hooks/useLoginForm';
+import { getAuth, sendEmailVerification } from 'firebase/auth';
+
 
 // ─── Campo reutilizable ────────────────────────────────────────────────────────
 // Definido fuera del componente para evitar re-montajes al escribir

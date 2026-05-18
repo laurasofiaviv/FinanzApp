@@ -2,15 +2,12 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, StatusBar,
-  TouchableOpacity, Platform, Dimensions,
+  TouchableOpacity, Platform, useWindowDimensions,
 } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useReportes } from '../hooks/useReportes';
-
-const SCREEN_W = Dimensions.get('window').width;
-const CHART_W  = SCREEN_W - SIZES.padding * 2;
 
 // ── Barra custom (solo renderiza, no calcula) ─────────────────────────────
 function BarraCustom({ label, ingreso, gasto, maxVal }) {
@@ -55,8 +52,13 @@ function ResumenCard({ label, value, icon, color }) {
   );
 }
 
-// ── Pantalla — solo renderiza lo que el hook devuelve ────────────────────
+// ── Pantalla — solo renderiza lo que el hook devuelve ─────────────────────
 export default function ReportesScreen({ navigation }) {
+  // useWindowDimensions se actualiza automáticamente
+  // cuando cambia el tamaño de pantalla o la orientación
+  const { width } = useWindowDimensions();
+  const CHART_W = width - SIZES.padding * 2;
+
   const {
     categorias, meses, maxVal,
     mayorGasto, catFrecuente,
@@ -77,6 +79,7 @@ export default function ReportesScreen({ navigation }) {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <StatusBar barStyle="light-content" />
 
+        {/* ── Header ── */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Feather name="arrow-left" size={22} color="#fff" />
@@ -92,7 +95,7 @@ export default function ReportesScreen({ navigation }) {
 
         <View style={styles.content}>
 
-          {/* Balance */}
+          {/* ── Balance ── */}
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>Balance del Mes</Text>
             <Text style={[styles.balanceValue, { color: balancePos ? COLORS.secondary : COLORS.danger }]}>
@@ -117,14 +120,14 @@ export default function ReportesScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Dona */}
+          {/* ── Dona: Gastos por Categoría ── */}
           <Text style={styles.sectionTitle}>Gastos por Categoría</Text>
           {categorias.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Feather name="pie-chart" size={32} color={COLORS.textLight} />
                 <Text style={styles.emptyText}>Aún no hay gastos registrados</Text>
               </View>
-          ) : (
+          ) : CHART_W > 0 ? (
               <View style={styles.chartCard}>
                 <PieChart
                     data={categorias.map((c) => ({
@@ -143,9 +146,15 @@ export default function ReportesScreen({ navigation }) {
                     hasLegend
                 />
               </View>
+          ) : (
+              // Fallback mientras el ancho todavía no está disponible
+              <View style={styles.emptyBox}>
+                <Feather name="loader" size={32} color={COLORS.textLight} />
+                <Text style={styles.emptyText}>Cargando gráfico...</Text>
+              </View>
           )}
 
-          {/* Barras */}
+          {/* ── Barras: Tendencia Mensual ── */}
           <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Tendencia Mensual</Text>
           <View style={styles.chartCard}>
             <View style={styles.legendRow}>
@@ -176,7 +185,7 @@ export default function ReportesScreen({ navigation }) {
             )}
           </View>
 
-          {/* Resumen */}
+          {/* ── Tarjetas resumen ── */}
           <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Resumen</Text>
           <View style={styles.resumenGrid}>
             <ResumenCard
@@ -216,48 +225,66 @@ export default function ReportesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container:        { flex: 1, backgroundColor: COLORS.background },
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 30, paddingHorizontal: SIZES.padding,
+    paddingBottom: 30,
+    paddingHorizontal: SIZES.padding,
     borderBottomLeftRadius: SIZES.headerRadius,
     borderBottomRightRadius: SIZES.headerRadius,
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center', alignItems: 'center', marginRight: 14,
   },
-  headerText:     { flex: 1 },
-  headerTitle:    { color: '#fff', fontSize: 22, fontWeight: 'bold' },
-  headerSubtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
-  profileCircle:  { width: 42, height: 42, borderRadius: 21, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  content:        { paddingHorizontal: SIZES.padding, paddingTop: 24, paddingBottom: 40 },
-  balanceCard:    { backgroundColor: COLORS.surface, borderRadius: 20, padding: 20, marginBottom: 28, alignItems: 'center' },
-  balanceLabel:   { fontSize: 14, color: COLORS.textSecondary, marginBottom: 6 },
-  balanceValue:   { fontSize: 36, fontWeight: 'bold', marginBottom: 16 },
-  balanceRow:     { flexDirection: 'row', width: '100%' },
-  balanceStat:    { flex: 1, alignItems: 'center', gap: 4 },
-  balanceDivider: { width: 1, backgroundColor: '#E0E0E0', marginHorizontal: 16 },
-  dot:            { width: 8, height: 8, borderRadius: 4 },
+  headerText:       { flex: 1 },
+  headerTitle:      { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  headerSubtitle:   { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
+  profileCircle:    { width: 42, height: 42, borderRadius: 21, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  content:          { paddingHorizontal: SIZES.padding, paddingTop: 24, paddingBottom: 40 },
+  balanceCard:      { backgroundColor: COLORS.surface, borderRadius: 20, padding: 20, marginBottom: 28, alignItems: 'center' },
+  balanceLabel:     { fontSize: 14, color: COLORS.textSecondary, marginBottom: 6 },
+  balanceValue:     { fontSize: 36, fontWeight: 'bold', marginBottom: 16 },
+  balanceRow:       { flexDirection: 'row', width: '100%' },
+  balanceStat:      { flex: 1, alignItems: 'center', gap: 4 },
+  balanceDivider:   { width: 1, backgroundColor: '#E0E0E0', marginHorizontal: 16 },
+  dot:              { width: 8, height: 8, borderRadius: 4 },
   balanceStatLabel: { fontSize: 12, color: COLORS.textLight },
   balanceStatValue: { fontSize: 16, fontWeight: 'bold' },
-  sectionTitle:   { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 12 },
-  chartCard:      { backgroundColor: '#fff', borderRadius: 20, padding: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3, alignItems: 'center' },
-  emptyBox:       { backgroundColor: COLORS.surface, borderRadius: 20, padding: 40, alignItems: 'center', gap: 12 },
-  emptyText:      { fontSize: 14, color: COLORS.textLight, textAlign: 'center' },
-  legendRow:      { flexDirection: 'row', gap: 20, alignSelf: 'flex-start', paddingLeft: 8, marginBottom: 12 },
-  legendItem:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot:      { width: 10, height: 10, borderRadius: 5 },
-  legendText:     { fontSize: 12, color: COLORS.textSecondary },
-  barsContainer:  { flexDirection: 'row', alignItems: 'flex-end', width: '100%', paddingHorizontal: 8, paddingBottom: 4 },
-  resumenGrid:    { gap: 12, marginTop: 12 },
-  resumenCard:    { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  sectionTitle:     { fontSize: 16, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 12 },
+  chartCard: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    alignItems: 'center', width: '100%',
+  },
+  emptyBox:         { backgroundColor: COLORS.surface, borderRadius: 20, padding: 40, alignItems: 'center', gap: 12 },
+  emptyText:        { fontSize: 14, color: COLORS.textLight, textAlign: 'center' },
+  legendRow:        { flexDirection: 'row', gap: 20, alignSelf: 'flex-start', paddingLeft: 8, marginBottom: 12 },
+  legendItem:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot:        { width: 10, height: 10, borderRadius: 5 },
+  legendText:       { fontSize: 12, color: COLORS.textSecondary },
+  barsContainer:    { flexDirection: 'row', alignItems: 'flex-end', width: '100%', paddingHorizontal: 8, paddingBottom: 4 },
+  resumenGrid:      { gap: 12, marginTop: 12 },
+  resumenCard: {
+    backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderLeftWidth: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
   resumenIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  resumenLabel:   { fontSize: 12, color: COLORS.textSecondary, marginBottom: 2 },
-  resumenValue:   { fontSize: 16, fontWeight: 'bold' },
-  detallesBtn:    { marginTop: 24, borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: SIZES.borderRadius, paddingVertical: 16, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#fff' },
-  detallesBtnText:{ color: COLORS.primary, fontSize: 15, fontWeight: 'bold' },
+  resumenLabel:     { fontSize: 12, color: COLORS.textSecondary, marginBottom: 2 },
+  resumenValue:     { fontSize: 16, fontWeight: 'bold' },
+  detallesBtn: {
+    marginTop: 24, borderWidth: 1.5, borderColor: COLORS.primary,
+    borderRadius: SIZES.borderRadius, paddingVertical: 16, paddingHorizontal: 20,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 8, backgroundColor: '#fff',
+  },
+  detallesBtnText:  { color: COLORS.primary, fontSize: 15, fontWeight: 'bold' },
 });

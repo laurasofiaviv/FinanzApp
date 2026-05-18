@@ -1,13 +1,14 @@
-//src/main/kotlin/com/finanzapp/models/AuthRequest.kt
+// src/main/kotlin/com/finanzapp/models/AuthRequest.kt
 package com.finanzapp.models
 
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class RegisterRequest(
-    val nombre: String,
-    val email: String,
-    val password: String
+    val nombre: String = "",
+    val email: String = "",
+    val password: String = "",
+    val idToken: String? = null   // ← el cliente ya creó la cuenta en Firebase
 )
 
 @Serializable

@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useProfile } from '../hooks/useProfile';
 import ConfirmModal from '../components/ConfirmModal';
+import { exportarExcel } from '../services/userService';
 
 export default function ProfileScreen({ navigation }) {
   const {
@@ -110,11 +111,17 @@ export default function ProfileScreen({ navigation }) {
         {/* ── CONFIGURACIÓN ── */}
         <Section title="CONFIGURACIÓN">
           <MenuRow
-            icon="download-outline"
-            iconBg={COLORS.surface}
-            iconColor={COLORS.textSecondary}
-            label="Exportar datos (Excel)"
-            onPress={() => Alert.alert('Próximamente', 'Esta función estará disponible pronto.')}
+              icon="download-outline"
+              iconBg={COLORS.surface}
+              iconColor={COLORS.textSecondary}
+              label="Exportar datos (Excel)"
+              onPress={async () => {
+                try {
+                  await exportarExcel();
+                } catch (e) {
+                  Alert.alert('Error', 'No se pudieron exportar los datos');
+                }
+              }}
           />
         </Section>
 

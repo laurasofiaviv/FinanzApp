@@ -14,7 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { COLORS, SIZES } from '../constants/Colors';
 import { useRegister } from '../hooks/useRegister';
 
-// ─── Reglas de contraseña (compartidas con el hook si las necesita) ────────────
+// ─── Reglas de contraseña ──────────────────────────────────────────────────────
 const passwordRules = [
     { id: 'len',     label: 'Mínimo 8 caracteres',                    test: (p) => p.length >= 8 },
     { id: 'upper',   label: 'Al menos una mayúscula',                  test: (p) => /[A-Z]/.test(p) },
@@ -57,7 +57,6 @@ function PasswordStrength({ password }) {
 }
 
 // ─── Campo de texto reutilizable ───────────────────────────────────────────────
-// Definido fuera del componente principal para evitar re-montajes con el teclado
 function InputField({
                         placeholder, value, onChange, secure, show, toggleShow,
                         error, keyboardType, icon, returnKeyType, onSubmitEditing, innerRef,
@@ -203,6 +202,11 @@ export default function RegisterScreen({ navigation }) {
                 onSubmitEditing={handleRegister}
             />
 
+            {/* ── Error general (correo en uso, red, etc.) ── */}
+            {errors.general ? (
+                <Text style={styles.errorGeneral}>{errors.general}</Text>
+            ) : null}
+
             {/* Botón registrar */}
             <TouchableOpacity
                 style={[styles.button, (!allRulesPassed || !confirm) && styles.buttonDisabled]}
@@ -258,6 +262,13 @@ const styles = StyleSheet.create({
     logo: { width: 70, height: 70, marginBottom: 8 },
     appName: { fontSize: 20, fontWeight: 'bold', color: COLORS.textPrimary, marginBottom: 6 },
     title: { fontSize: 24, fontWeight: 'bold', color: COLORS.textPrimary },
+    errorGeneral: {
+        color: '#E74C3C',
+        fontSize: 13,
+        textAlign: 'center',
+        marginBottom: 12,
+        paddingHorizontal: 8,
+    },
     button: {
         backgroundColor: COLORS.primary,
         paddingVertical: 16,
