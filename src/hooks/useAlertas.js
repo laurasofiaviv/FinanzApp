@@ -133,7 +133,7 @@ export function useAlertas() {
 
         // Mensual: alerta 5 días antes
         // Quincenal: alerta 7 días antes (más anticipación porque es más frecuente)
-        const umbral = frecuencia === 'quincenal' ? 7 : 5;
+        const umbral = frecuencia === 'quincenal' ? 60 : 60;
 
         if (dias <= umbral && dias >= 0) {
             const esHoy = dias === 0;
