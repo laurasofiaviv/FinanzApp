@@ -12,6 +12,8 @@ import ProductDetailScreen from '../screens/ProductDetailScreen';
 import EditProductScreen from '../screens/EditProductScreen';
 import EmailSentScreen from '../screens/EmailSentScreen';
 import LoginFormScreen from '../screens/LoginFormScreen';
+import NotificacionesScreen from '../screens/NotificacionesScreen';
+
 
 const Stack = createStackNavigator();
 
@@ -22,6 +24,7 @@ function MainStack() {
       <Stack.Screen name="Productos" component={ProductsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="EditProduct" component={EditProductScreen} />
+      <Stack.Screen name="Notificaciones"  component={NotificacionesScreen} />
     </Stack.Navigator>
   );
 }

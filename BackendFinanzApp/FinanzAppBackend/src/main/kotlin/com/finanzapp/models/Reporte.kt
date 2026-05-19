@@ -1,3 +1,4 @@
+//models/Reporte.kt
 package com.finanzapp.models
 
 import kotlinx.serialization.Serializable

@@ -1,3 +1,4 @@
+//src/main/kotlin/com/finanzapp/services/ReporteService
 package com.finanzapp.services
 
 import com.finanzapp.models.CategoriaSummary
@@ -25,12 +26,12 @@ object ReporteService {
             fecha.monthValue == mes && fecha.year == anio
         }
 
-        val gastos   = filtrados.filter { it.tipo == "gasto" }
+        val gastos = filtrados.filter { it.tipo == "gasto" }
         val ingresos = filtrados.filter { it.tipo == "ingreso" }
 
-        val totalGastos   = gastos.sumOf { it.monto }
+        val totalGastos = gastos.sumOf { it.monto }
         val totalIngresos = ingresos.sumOf { it.monto }
-        val balance       = totalIngresos - totalGastos
+        val balance = totalIngresos - totalGastos
 
         // --- Por categoría (solo gastos) ---
         val porCategoria: List<CategoriaSummary> = gastos
@@ -39,9 +40,9 @@ object ReporteService {
                 val subtotal = movs.sumOf { it.monto }
                 val pct = if (totalGastos > 0) (subtotal / totalGastos) * 100 else 0.0
                 CategoriaSummary(
-                    categoria   = cat,
-                    total       = subtotal,
-                    porcentaje  = Math.round(pct * 100.0) / 100.0
+                    categoria = cat,
+                    total = subtotal,
+                    porcentaje = Math.round(pct * 100.0) / 100.0
                 )
             }
             .sortedByDescending { it.total }
@@ -55,17 +56,17 @@ object ReporteService {
             }
             if (movsEnSemana.isEmpty()) return@mapNotNull null
             EvolucionSemanal(
-                semana   = semana,
-                gastos   = movsEnSemana.filter { it.tipo == "gasto"   }.sumOf { it.monto },
+                semana = semana,
+                gastos = movsEnSemana.filter { it.tipo == "gasto" }.sumOf { it.monto },
                 ingresos = movsEnSemana.filter { it.tipo == "ingreso" }.sumOf { it.monto }
             )
         }
 
         return ReporteResumen(
-            totalGastos      = totalGastos,
-            totalIngresos    = totalIngresos,
-            balance          = balance,
-            porCategoria     = porCategoria,
+            totalGastos = totalGastos,
+            totalIngresos = totalIngresos,
+            balance = balance,
+            porCategoria = porCategoria,
             evolucionSemanal = evolucionSemanal
         )
     }
@@ -77,16 +78,26 @@ object ReporteService {
     suspend fun exportarCsv(uid: String): String {
         val todos = MovimientoRepository.obtenerTodos(uid)
         val sb = StringBuilder()
-        sb.appendLine("id,tipo,monto,categoria,descripcion,fecha")
-        todos.forEach { mov ->
+
+        // Encabezado con BOM para que Excel abra tildes correctamente
+        sb.append('\uFEFF')
+        sb.appendLine("Tipo,Monto,Categoría,Descripción,Fecha,Producto")
+
+        todos.sortedByDescending { it.creadoEn }.forEach { mov ->
             val fecha = Instant.ofEpochMilli(mov.creadoEn)
                 .atZone(ZoneId.of("America/Bogota"))
                 .toLocalDate()
 
-            val desc = mov.descripcion?.replace(",", ";") ?: ""
-            val cat  = mov.categoria?.replace(",", ";") ?: "Sin categoría"
+            // Escapar campos con comas envolviéndolos en comillas
+            fun esc(s: String?) = "\"${(s ?: "").replace("\"", "\"\"")}\""
 
-            sb.appendLine("${mov.id},${mov.tipo},${mov.monto},$cat,$desc,$fecha")
+            val tipo = if (mov.tipo == "gasto") "Gasto" else "Ingreso"
+            val monto = mov.monto.toBigDecimal().toPlainString()
+            val categoria = esc(mov.categoria?.ifBlank { "Sin categoría" } ?: "Sin categoría")
+            val desc = esc(mov.descripcion)
+            val producto = esc(mov.productoId)
+
+            sb.appendLine("$tipo,$monto,$categoria,$desc,$fecha,$producto")
         }
         return sb.toString()
     }
@@ -96,11 +107,11 @@ object ReporteService {
     /** Semana dentro del mes: día 1-7 → 1, 8-14 → 2, 15-21 → 3, 22-28 → 4, 29+ → 5 */
     private fun semanaDelMes(fecha: ZonedDateTime): Int {
         return when (fecha.dayOfMonth) {
-            in 1..7   -> 1
-            in 8..14  -> 2
+            in 1..7 -> 1
+            in 8..14 -> 2
             in 15..21 -> 3
             in 22..28 -> 4
-            else      -> 5
+            else -> 5
         }
     }
 }

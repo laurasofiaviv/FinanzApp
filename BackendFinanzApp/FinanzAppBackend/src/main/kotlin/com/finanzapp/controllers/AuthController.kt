@@ -1,4 +1,4 @@
-//src/main/kotlin/com/finanzapp/controllers
+//src/main/kotlin/com/finanzapp/controllers/AuthController
 package com.finanzapp.controllers
 
 import com.finanzapp.models.ForgotPasswordRequest

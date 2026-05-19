@@ -104,7 +104,7 @@ export default function ProfileScreen({ navigation }) {
             iconBg="#E1F5EE"
             iconColor="#0F6E56"
             label="Notificaciones"
-            onPress={() => Alert.alert('Próximamente', 'Esta función estará disponible pronto.')}
+            onPress={() => navigation.navigate('Notificaciones')}
           />
         </Section>
 

@@ -181,16 +181,24 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.infoCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={styles.sectionTitle}>RECORDATORIOS Y ALERTAS</Text>
-            {alertas.length > 0 && (
-              <View style={{
-                backgroundColor: hayUrgentes ? COLORS.danger : '#F39C12',
-                borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
-              }}>
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
-                  {alertas.length}
-                </Text>
-              </View>
-            )}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Notificaciones')}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+
+
+              {alertas.length > 0 && (
+                <View style={{
+                  backgroundColor: hayUrgentes ? COLORS.danger : '#F39C12',
+                  borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>
+                    {alertas.length}
+                  </Text>
+                </View>
+              )}
+              <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Ver todas</Text>
+            </TouchableOpacity>
           </View>
 
           {alertas.length === 0 ? (
