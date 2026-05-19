@@ -2,6 +2,8 @@
 import { useState, useRef, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
+import { getAuth } from 'firebase/auth';
+
 
 function validarEmail(email) {
   return /\S+@\S+\.\S+/.test(email);
@@ -9,11 +11,11 @@ function validarEmail(email) {
 
 export function useLoginForm(navigation) {
   const { login } = useContext(AuthContext);
-  const [email,    setEmail]    = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [errors,   setErrors]   = useState({});
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const passRef = useRef(null);
 
   const limpiarError = (campo) =>
@@ -21,8 +23,8 @@ export function useLoginForm(navigation) {
 
   const validar = () => {
     const e = {};
-    if (!email || !validarEmail(email)) e.email    = 'Ingresa un correo válido';
-    if (!password)                       e.password = 'La contraseña es obligatoria';
+    if (!email || !validarEmail(email)) e.email = 'Ingresa un correo válido';
+    if (!password) e.password = 'La contraseña es obligatoria';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -32,7 +34,11 @@ export function useLoginForm(navigation) {
     setLoading(true);
     try {
       const userData = await loginUser({ email, password });
-      login(userData);  // guarda en AuthContext → navega al Main
+      const firebaseUser = getAuth().currentUser;
+      login({
+        ...userData,
+        emailVerified: firebaseUser?.emailVerified ?? false,
+      });
     } catch (e) {
       setErrors({ general: e.message || 'Correo o contraseña incorrectos' });
     } finally {

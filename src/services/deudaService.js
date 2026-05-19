@@ -53,12 +53,12 @@ export async function eliminarDeuda(id) {
     return res.json();
 }
 
-export async function abonarDeuda(deudaId, productoPagoId) {
+export async function abonarDeuda(deudaId, productoPagoId, montoAbono) {
     const token = await getToken();
     const res = await fetch(`${API_URL}/deudas/${deudaId}/abonar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ productoPagoId }),
+        body: JSON.stringify({ productoPagoId, montoAbono }),
     });
     if (!res.ok) {
         const err = await res.json();

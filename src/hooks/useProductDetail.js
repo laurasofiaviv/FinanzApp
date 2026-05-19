@@ -1,4 +1,5 @@
 // src/hooks/useProductDetail.js
+import { useProductos } from '../context/ProductContext';
 import { useFinanz } from '../context/FinanzContext';
 
 function fmt(n) {
@@ -7,7 +8,8 @@ function fmt(n) {
 }
 
 export function useProductDetail(productoId) {
-    const { productos, gastos, ingresos, eliminarProducto } = useFinanz();
+    const { productos, eliminarProducto } = useProductos();
+    const { gastos, ingresos } = useFinanz();
 
     // ── Producto activo ────────────────────────────────────────────────────
     const producto = productos.find((p) => p.id === productoId) || null;
@@ -17,11 +19,11 @@ export function useProductDetail(productoId) {
     }
 
     // ── Cálculo de uso de cupo (sale de ProductDetailScreen) ──────────────
-    const cupoTotal  = producto.cupoTotal  || 0;
+    const cupoTotal = producto.cupoTotal || 0;
     const saldoUsado = producto.saldoUsado || 0;
     const disponible = cupoTotal - saldoUsado;
-    const pct        = cupoTotal > 0 ? Math.min((saldoUsado / cupoTotal) * 100, 100) : 0;
-    const barColor   = pct > 80 ? '#E74C3C' : pct > 50 ? '#F39C12' : '#1A56E8';
+    const pct = cupoTotal > 0 ? Math.min((saldoUsado / cupoTotal) * 100, 100) : 0;
+    const barColor = pct > 80 ? '#E74C3C' : pct > 50 ? '#F39C12' : '#1A56E8';
 
     // ── Historial de movimientos vinculados al productoId ─────────────────
     // (sale de ProductDetailScreen — antes no existía, ahora lo centralizamos)
@@ -41,14 +43,14 @@ export function useProductDetail(productoId) {
 
     // ── Mapa de íconos y etiquetas ─────────────────────────────────────────
     const iconMap = {
-        credito:  { name: 'card-outline',          bg: '#E6F1FB', color: '#185FA5' },
-        debito:   { name: 'phone-portrait-outline', bg: '#EAF3DE', color: '#3B6D11' },
-        efectivo: { name: 'cash-outline',           bg: '#FAEEDA', color: '#854F0B' },
+        credito: { name: 'card-outline', bg: '#E6F1FB', color: '#185FA5' },
+        debito: { name: 'phone-portrait-outline', bg: '#EAF3DE', color: '#3B6D11' },
+        efectivo: { name: 'cash-outline', bg: '#FAEEDA', color: '#854F0B' },
     };
 
     const tipoLabel = {
-        credito:  'Tarjeta de crédito',
-        debito:   'Cuenta débito',
+        credito: 'Tarjeta de crédito',
+        debito: 'Cuenta débito',
         efectivo: 'Efectivo',
     };
 

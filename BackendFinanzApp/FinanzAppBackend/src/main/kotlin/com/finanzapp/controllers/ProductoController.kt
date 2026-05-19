@@ -2,8 +2,7 @@
 package com.finanzapp.controllers
 
 import com.finanzapp.models.ProductoRequest
-import com.finanzapp.repository.ProductoRepository          // ← import que faltaba
-import com.finanzapp.services.AuthService
+import com.finanzapp.repository.ProductoRepository
 import com.finanzapp.services.ProductoService
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -14,20 +13,11 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import com.finanzapp.utils.getUid
 
 object ProductoController {
 
-    // Mismo helper de siempre — sin cambios
-    private suspend fun getUid(call: ApplicationCall): String? {
-        val token = call.request.headers["Authorization"]
-            ?.removePrefix("Bearer ")
-            ?: return null
-        return try {
-            AuthService.verificarToken(token)
-        } catch (e: Exception) {
-            null
-        }
-    }
+
 
     suspend fun crear(call: ApplicationCall) {
         val uid = getUid(call) ?: run {
@@ -91,6 +81,7 @@ object ProductoController {
                 body["diaCorte"]?.jsonPrimitive?.longOrNull?.toInt()?.let { put("diaCorte", it) }
                 body["diaPago"]?.jsonPrimitive?.longOrNull?.toInt()?.let { put("diaPago", it) }
                 body["saldoActual"]?.jsonPrimitive?.doubleOrNull?.let { put("saldoActual", it) }
+                body["interesMensual"]?.jsonPrimitive?.doubleOrNull?.let { put("interesMensual", it) }
             }
             val actualizado = ProductoRepository.actualizar(uid, id, datos)  // ← import resuelto
             call.respond(HttpStatusCode.OK, actualizado)

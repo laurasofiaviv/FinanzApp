@@ -280,8 +280,21 @@ export default function ProductsScreen({ navigation }) {
                                     {form.errors.cupoTotal
                                         ? <Text style={styles.errText}>{form.errors.cupoTotal}</Text>
                                         : null}
-
+                                    <Text style={styles.label}>Interés mensual (%)</Text>
+                                    <TextInput
+                                        style={[styles.input, form.errors.interesMensual && styles.inputErr]}
+                                        placeholder="Ej: 2.5"
+                                        placeholderTextColor={COLORS.textLight}
+                                        keyboardType="decimal-pad"
+                                        maxLength={5}
+                                        value={form.interesMensual}
+                                        onChangeText={(v) => setField('interesMensual', v.replace(/[^0-9.]/g, ''))}
+                                    />
+                                    {form.errors.interesMensual
+                                        ? <Text style={styles.errText}>{form.errors.interesMensual}</Text>
+                                        : null}
                                     <View style={styles.twoCol}>
+
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.label}>Día de corte</Text>
                                             <TextInput
@@ -296,7 +309,9 @@ export default function ProductsScreen({ navigation }) {
                                             {form.errors.diaCorte
                                                 ? <Text style={styles.errText}>{form.errors.diaCorte}</Text>
                                                 : null}
+
                                         </View>
+
                                         <View style={{ width: 12 }} />
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.label}>Día de pago</Text>

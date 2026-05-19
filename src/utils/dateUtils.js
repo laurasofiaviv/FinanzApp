@@ -1,3 +1,4 @@
+//src/utils/dateUtils.js
 export function proximaFechaPago(diaPago) {
   if (!diaPago) return '';
   const hoy = new Date();

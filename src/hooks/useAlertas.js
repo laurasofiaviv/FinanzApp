@@ -1,5 +1,7 @@
 // src/hooks/useAlertas.js
 import { useFinanz } from '../context/FinanzContext';
+import { useProductos } from '../context/ProductContext';
+import { useDeudas } from '../context/DeudaContext';
 
 // Calcula cuántos días faltan desde hoy hasta un día del mes
 function diasHastaElDia(diaMes) {
@@ -25,7 +27,9 @@ function diasHastaFecha(fechaStr) {
 }
 
 export function useAlertas() {
-    const { productos, gastos, deudas } = useFinanz();
+    const { productos } = useProductos();
+    const { deudas } = useDeudas();
+    const { gastos } = useFinanz();
     const alertas = [];
 
     // ── 1. FECHAS DE CORTE Y PAGO DE TARJETAS ──────────────────────────────

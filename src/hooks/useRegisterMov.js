@@ -1,25 +1,10 @@
-//hooks/useTegisterMov.js
+// src/hooks/useRegisterMov.js
 import { useState } from 'react';
 import { Animated } from 'react-native';
 import { useFinanz } from '../context/FinanzContext';
-
-// ── Helpers puros (sin dependencias de React) ─────────────────────────────
-export function fmt(num) {
-  if (num === '' || num == null) return '';
-  return Number(num).toLocaleString('es-CO');
-}
-export function parsear(texto) {
-  const d = texto.replace(/[^0-9]/g, '');
-  return d === '' ? '' : parseInt(d, 10);
-}
-export function isoADisplay(iso) {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
-}
-export function hoyISO() {
-  return new Date().toISOString().split('T')[0];
-}
+import { fmt, parsear, isoADisplay, hoyISO } from '../utils/formatUtils';
+import { useProductos } from '../context/ProductContext';
+import { useDeudas } from '../context/DeudaContext';
 
 const estadoVacio = () => ({
   montoNum: '',
@@ -34,7 +19,10 @@ const estadoVacio = () => ({
 
 // ── Hook principal ────────────────────────────────────────────────────────
 export function useRegisterMov() {
-  const { agregarGasto, agregarIngreso, agregarDeuda, productos } = useFinanz();
+  const { productos } = useProductos();
+  const { agregarDeuda } = useDeudas();
+  const { agregarGasto, agregarIngreso } = useFinanz();
+
 
   const [tab, setTab] = useState('gasto');
   const [form, setForm] = useState(estadoVacio());
@@ -85,10 +73,8 @@ export function useRegisterMov() {
     ]).start();
   };
 
-  
   const handleGuardar = async () => {
     if (!validar()) return;
-
     const base = {
       monto: form.montoNum,
       montoDisplay: '$' + form.montoDisplay,

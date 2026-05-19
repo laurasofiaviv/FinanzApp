@@ -1,4 +1,4 @@
-//DashboardScreen.js
+//screens/DashboardScreen.js
 import { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
@@ -10,6 +10,8 @@ import { COLORS, SIZES } from '../constants/Colors';
 import { Feather } from '@expo/vector-icons';
 import { useAlertas } from '../hooks/useAlertas';
 import { obtenerPerfil } from '../services/userService';
+import { useProductos } from '../context/ProductContext';
+import { useDeudas } from '../context/DeudaContext';
 
 
 const CATEGORIA_ICON = {
@@ -30,15 +32,9 @@ const CATEGORIA_ICON = {
 
 export default function DashboardScreen({ navigation }) {
   const { usuario } = useContext(AuthContext);
-  const {
-    balanceMes,
-    totalIngresosMes,
-    totalGastosMes,
-    movimientosRecientes,
-    productos,
-    deudas,
-    agregarGasto
-  } = useFinanz();
+  const { balanceMes, totalIngresosMes, totalGastosMes, movimientosRecientes, agregarGasto } = useFinanz();
+  const { productos } = useProductos();
+  const { deudas } = useDeudas();
   const { alertas, hayUrgentes } = useAlertas();
 
   const [userName, setUserName] = useState('');

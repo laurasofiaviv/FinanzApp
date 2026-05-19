@@ -3,27 +3,16 @@ package com.finanzapp.controllers
 
 import com.finanzapp.models.PasswordRequest
 import com.finanzapp.models.PerfilRequest
-import com.finanzapp.services.AuthService
 import com.finanzapp.services.UsuarioService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import com.finanzapp.utils.getUid
 
 object UsuarioController {
 
-    // ── Helper (mismo patrón que Movimiento y Reporte) ────────────────────
 
-    private suspend fun getUid(call: ApplicationCall): String? {
-        val token = call.request.headers["Authorization"]
-            ?.removePrefix("Bearer ")
-            ?: return null
-        return try {
-            AuthService.verificarToken(token)
-        } catch (e: Exception) {
-            null
-        }
-    }
 
     // ── GET /usuarios/perfil ──────────────────────────────────────────────
 

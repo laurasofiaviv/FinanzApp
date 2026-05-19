@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
-import { useFinanz } from '../context/FinanzContext';
 import { obtenerPerfil, actualizarPerfil } from '../services/userService';
+import { useProductos } from '../context/ProductContext';
 
 export function useProfile() {
     const { usuario, logout } = useAuth();
-    const { productos } = useFinanz();
+    const { productos } = useProductos();
 
     const [nombre, setNombre] = useState('');
     const [email, setEmail] = useState('');

@@ -2,53 +2,37 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import {
-  crearProducto,
-  obtenerProductos,
-  eliminarProducto as eliminarProductoAPI,
-  editarProducto as editarProductoAPI,          // ← nuevo import
-} from '../services/productService';
+
 import { crearMovimiento, obtenerMovimientos } from '../services/movimientoService';
-import {
-  crearDeuda as crearDeudaAPI,
-  obtenerDeudas,
-  eliminarDeuda as eliminarDeudaAPI,
-  abonarDeuda as abonarDeudaAPI,
-  actualizarDeuda as actualizarDeudaAPI,
-} from '../services/deudaService';
 
 
 export const FinanzContext = createContext();
 
-export const FinanzProvider = ({ children }) => {
+export const FinanzProvider = ({ children, productos, setProductos, cargarGastoATarjeta }) => {
   const [gastos, setGastos] = useState([]);
   const [ingresos, setIngresos] = useState([]);
-  const [deudas, setDeudas] = useState([]);
-  const [productos, setProductos] = useState([]);
 
   // ── CARGA INICIAL DESDE FIRESTORE ────────────────────────────────────────
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        setProductos([]);
+        //setProductos([]);
         setGastos([]);
         setIngresos([]);
-        setDeudas([]);                          // ← limpiar deudas en logout
+        //setDeudas([]);                          // ← limpiar deudas en logout
         return;
       }
       try {
-        const [productosGuardados, gastosGuardados, ingresosGuardados, deudasGuardadas] =
+        const [gastosGuardados, ingresosGuardados] =
           await Promise.all([
-            obtenerProductos(),
             obtenerMovimientos('gasto'),
             obtenerMovimientos('ingreso'),
-            obtenerDeudas(),
           ]);
-        setProductos(productosGuardados);
+        //setProductos(productosGuardados);
         setGastos(gastosGuardados);
         setIngresos(ingresosGuardados);
-        setDeudas(deudasGuardadas);
+        //setDeudas(deudasGuardadas);
 
       } catch (e) {
         console.error('Error cargando datos:', e.message);
@@ -113,117 +97,7 @@ export const FinanzProvider = ({ children }) => {
     });
   };
 
-  // ── PRODUCTOS ────────────────────────────────────────────────────────────
-  const agregarProducto = async (producto) => {
-    try {
-      const productoGuardado = await crearProducto({
-        tipo: producto.tipo,
-        nombre: producto.nombre,
-        banco: producto.banco || '',
-        franquicia: producto.franquicia || null,
-        cupoTotal: producto.cupoTotal || null,
-        diaCorte: producto.diaCorte || null,
-        diaPago: producto.diaPago || null,
-        saldoActual: producto.saldoActual || 0,
-      });
 
-      const nuevo = { ...productoGuardado, saldoUsado: 0, deudaId: null };
-
-      if (producto.tipo === 'credito') {
-        const deudaEspejoData = {
-          productoId: productoGuardado.id,
-          tipo: 'Tarjeta de crédito',
-          descripcion: producto.nombre,
-          monto: 0,
-          montoDisplay: '$0',
-          cupoTotal: producto.cupoTotal || 0,
-          diaCorte: String(producto.diaCorte || ''),
-          diaPago: String(producto.diaPago || ''),
-          franquicia: producto.franquicia || '',
-          montoPagado: 0,
-          cuotasPagadas: 0,
-          cuotas: '1',
-          interes: '0',
-          pagoMinimo: 0,
-          esEspejo: true,
-          estado: 'pendiente',
-          fechaVencimiento: proximaFechaPago(producto.diaPago),
-        };
-
-        // Guardar en Firestore
-        const deudaGuardada = await crearDeudaAPI(deudaEspejoData);
-        nuevo.deudaId = deudaGuardada.id;
-        setDeudas((prev) => [deudaGuardada, ...prev]);
-      }
-
-
-      setProductos((prev) => [nuevo, ...prev]);
-      return nuevo;
-    } catch (e) {
-      console.error('Error al guardar producto:', e.message);
-      Alert.alert('Error', 'No se pudo guardar el producto');
-    }
-  };
-
-  const eliminarProducto = async (id) => {
-    try {
-      await eliminarProductoAPI(id);
-      const prod = productos.find((p) => p.id === id);
-      if (prod?.deudaId) setDeudas((prev) => prev.filter((d) => d.id !== prod.deudaId));
-      setProductos((prev) => prev.filter((p) => p.id !== id));
-      return true;                                              // ← agrega
-    } catch (e) {
-      console.error('Error al eliminar producto:', e.message);
-      Alert.alert('Error', 'No se pudo eliminar el producto');
-      return false;
-    }
-  };
-
-  // ── EDITAR PRODUCTO ──────────────────────────────────────────────────────
-  const editarProducto = async (productoId, datos) => {
-    try {
-      const actualizado = await editarProductoAPI(productoId, datos);
-      setProductos((prev) =>
-        prev.map((p) => (p.id === productoId ? { ...p, ...actualizado } : p))
-      );
-      return actualizado;
-    } catch (e) {
-      console.error('Error al editar producto:', e.message);
-      Alert.alert('Error', 'No se pudo actualizar el producto');
-      return null;
-    }
-  };
-
-  // ── GASTO EN TARJETA ─────────────────────────────────────────────────────
-  const cargarGastoATarjeta = async (productoId, monto) => {
-    const producto = productos.find((p) => p.id === productoId);
-    if (!producto) return;
-    if ((producto.saldoUsado || 0) + monto > producto.cupoTotal) {
-      Alert.alert('Cupo excedido', `Estás superando el límite de ${producto.nombre}`);
-      return;
-    }
-
-    // Actualizar saldoUsado del producto en Firestore
-    await editarProductoAPI(productoId, { saldoUsado: (producto.saldoUsado || 0) + monto });
-
-    setProductos((prev) =>
-      prev.map((p) => p.id !== productoId ? p : { ...p, saldoUsado: (p.saldoUsado || 0) + monto })
-    );
-
-    // Actualizar deuda espejo en Firestore
-    if (producto?.deudaId) {
-      const deudaEspejo = deudas.find(d => d.id === producto.deudaId);
-      if (deudaEspejo) {
-        const nuevoMonto = (deudaEspejo.monto || 0) + monto;
-        // Actualizar en Firestore
-        await actualizarDeudaAPI(producto.deudaId, { monto: nuevoMonto });
-        // Actualizar en memoria
-        setDeudas((prev) =>
-          prev.map((d) => d.id !== producto.deudaId ? d : { ...d, monto: nuevoMonto })
-        );
-      }
-    }
-  };
 
   // ── GASTOS E INGRESOS ────────────────────────────────────────────────────
   const agregarGasto = async (gasto) => {
@@ -306,48 +180,7 @@ export const FinanzProvider = ({ children }) => {
     }
   };
 
-  // ── DEUDAS ───────────────────────────────────────────────────────────────
-  const agregarDeuda = async (deuda) => {
-    try {
-      const guardada = await crearDeudaAPI(deuda);
-      setDeudas((prev) => [guardada, ...prev]);
-      return guardada;
-    } catch (e) {
-      console.error('Error al guardar deuda:', e.message);
-      Alert.alert('Error', 'No se pudo guardar la deuda');
-      return null;
-    }
-  };
 
-  const marcarDeudaPagada = (id) => {
-    setDeudas((prev) => prev.map((d) => d.id === id ? { ...d, estado: 'pagada' } : d));
-    const deuda = deudas.find((d) => d.id === id);
-    if (deuda?.productoId) {
-      setProductos((prev) =>
-        prev.map((p) => p.id === deuda.productoId ? { ...p, saldoUsado: 0 } : p)
-      );
-    }
-  };
-
-  const pagarCuota = async (deudaId, productoPagoId) => {
-    try {
-      const { deuda: deudaActualizada, montoPago } =
-        await abonarDeudaAPI(deudaId, productoPagoId);
-      setDeudas((prev) =>
-        prev.map((d) => (d.id === deudaId ? deudaActualizada : d))
-      );
-      setProductos((prev) =>
-        prev.map((p) =>
-          p.id === productoPagoId
-            ? { ...p, saldoActual: (p.saldoActual || 0) - montoPago }
-            : p
-        )
-      );
-      Alert.alert('Pago exitoso', `Pagaste $${montoPago.toLocaleString('es-CO')}`);
-    } catch (e) {
-      Alert.alert('Error', e.message || 'No se pudo registrar el pago');
-    }
-  };
 
   // ── ESTADÍSTICAS ─────────────────────────────────────────────────────────
   const totalGastosMes = () => {
@@ -365,22 +198,19 @@ export const FinanzProvider = ({ children }) => {
   };
 
   const balanceMes = () =>
-    productos.length === 0 ? 0 : productos.reduce((acc, p) => acc + (p.saldoActual || 0), 0);
+    !productos || productos.length === 0 ? 0 : productos.reduce((acc, p) => acc + (p.saldoActual || 0), 0);
 
   const movimientosRecientes = () =>
     [...gastos.map(g => ({ ...g, tipo: 'gasto' })), ...ingresos.map(i => ({ ...i, tipo: 'ingreso' }))]
       .sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn))
       .slice(0, 5);
 
-  const tarjetasCredito = () => productos.filter((p) => p.tipo === 'credito');
+  const tarjetasCredito = () => (productos || []).filter((p) => p.tipo === 'credito');
 
   return (
     <FinanzContext.Provider value={{
-      gastos, ingresos, deudas, productos,
+      gastos, ingresos,
       agregarGasto, agregarIngreso,
-      agregarDeuda, agregarProducto, eliminarProducto,
-      editarProducto,                                   // ← expuesto
-      pagarCuota, marcarDeudaPagada,
       totalGastosMes, totalIngresosMes, balanceMes,
       movimientosRecientes, tarjetasCredito,
     }}>
@@ -390,11 +220,3 @@ export const FinanzProvider = ({ children }) => {
 };
 
 export const useFinanz = () => useContext(FinanzContext);
-
-export function proximaFechaPago(diaPago) {
-  if (!diaPago) return '';
-  const hoy = new Date();
-  const fecha = new Date(hoy.getFullYear(), hoy.getMonth(), diaPago);
-  if (fecha <= hoy) fecha.setMonth(fecha.getMonth() + 1);
-  return fecha.toISOString().split('T')[0].split('-').reverse().join('/');
-}

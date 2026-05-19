@@ -20,6 +20,7 @@ object ProductoService {
             diaCorte   = req.diaCorte,
             diaPago    = req.diaPago,
             saldoActual = req.saldoActual,
+            interesMensual = req.interesMensual,
         )
         return ProductoRepository.guardar(producto)
     }

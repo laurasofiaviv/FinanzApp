@@ -16,7 +16,8 @@ data class Producto(
     val diaPago: Int? = null,       // solo crédito
     val saldoActual: Double = 0.0,  // débito y efectivo
     val saldoUsado: Double = 0.0,   // solo crédito
-    val creadoEn: Long = System.currentTimeMillis()
+    val creadoEn: Long = System.currentTimeMillis(),
+    val interesMensual: Double = 0.0,  // solo crédito, ej: 2.5 = 2.5% mensual
 )
 
 @Serializable
@@ -29,4 +30,5 @@ data class ProductoRequest(
     val diaCorte: Int? = null,
     val diaPago: Int? = null,
     val saldoActual: Double = 0.0,
+    val interesMensual: Double = 0.0,
 )

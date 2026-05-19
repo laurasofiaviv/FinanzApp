@@ -25,6 +25,7 @@ object ProductoRepository {
         coleccion(uid).get().get()
             .documents
             .mapNotNull { it.toObject(Producto::class.java) }
+
     }
 
     suspend fun eliminar(uid: String, productoId: String) = withContext(Dispatchers.IO) {
@@ -59,6 +60,7 @@ object ProductoRepository {
                 saldoActual = updated.getDouble("saldoActual") ?: 0.0,
                 saldoUsado = updated.getDouble("saldoUsado") ?: 0.0,
                 creadoEn = updated.getLong("creadoEn") ?: System.currentTimeMillis(),
+                interesMensual = updated.getDouble("interesMensual") ?: 0.0,
             )
         }
 
@@ -78,6 +80,7 @@ object ProductoRepository {
             saldoActual = doc.getDouble("saldoActual") ?: 0.0,
             saldoUsado = doc.getDouble("saldoUsado") ?: 0.0,
             creadoEn = doc.getLong("creadoEn") ?: System.currentTimeMillis(),
+            interesMensual = doc.getDouble("interesMensual") ?: 0.0,
         )
     }
 }

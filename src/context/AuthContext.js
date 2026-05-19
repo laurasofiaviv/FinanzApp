@@ -5,7 +5,8 @@ import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [usuario, setUsuario] = useState(undefined);
+  //const [usuario, setUsuario] = useState(undefined);
+  const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -15,7 +16,7 @@ export const AuthProvider = ({ children }) => {
         setUsuario({
           uid:           user.uid,
           email:         user.email,
-          emailVerified: user.emailVerified,  // ← nuevo
+          emailVerified: user.emailVerified, 
         });
       } else {
         setUsuario(null);

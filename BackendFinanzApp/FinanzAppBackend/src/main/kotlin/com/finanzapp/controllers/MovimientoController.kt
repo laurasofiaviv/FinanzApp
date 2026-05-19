@@ -2,25 +2,16 @@
 package com.finanzapp.controllers
 
 import com.finanzapp.models.MovimientoRequest
-import com.finanzapp.services.AuthService
 import com.finanzapp.services.MovimientoService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import com.finanzapp.utils.getUid
 
 object MovimientoController {
 
-    private suspend fun getUid(call: ApplicationCall): String? {
-        val token = call.request.headers["Authorization"]
-            ?.removePrefix("Bearer ")
-            ?: return null
-        return try {
-            AuthService.verificarToken(token)
-        } catch (e: Exception) {
-            null
-        }
-    }
+
 
     suspend fun crear(call: ApplicationCall) {
         val uid = getUid(call) ?: run {

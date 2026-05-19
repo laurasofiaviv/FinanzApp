@@ -5,25 +5,17 @@ import com.finanzapp.models.AbonoRequest
 import com.finanzapp.models.Deuda
 import com.finanzapp.repository.DeudaRepository
 import com.finanzapp.repository.ProductoRepository
-import com.finanzapp.services.AuthService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import java.util.UUID
 import com.finanzapp.models.AbonoResponse
+import com.finanzapp.utils.getUid
+import com.finanzapp.services.DeudaService
 
 object DeudaController {
 
-    private suspend fun getUid(call: ApplicationCall): String? {
-        val token = call.request.headers["Authorization"]
-            ?.removePrefix("Bearer ") ?: return null
-        return try {
-            AuthService.verificarToken(token)
-        } catch (e: Exception) {
-            null
-        }
-    }
 
     suspend fun crear(call: ApplicationCall) {
         val uid = getUid(call) ?: run {
@@ -93,92 +85,59 @@ object DeudaController {
             val body = call.receive<AbonoRequest>()
             val deuda = DeudaRepository.obtenerPorId(uid, deudaId)
                 ?: throw Exception("Deuda no encontrada")
-
             val producto = ProductoRepository.obtenerPorId(uid, body.productoPagoId)
                 ?: throw Exception("Producto no encontrado")
 
-            val interes = deuda.interes.toDoubleOrNull() ?: 0.0
-            val cuotas = deuda.cuotas.toIntOrNull() ?: 1
             val saldoPendiente = deuda.monto - deuda.montoPagado
 
-            // ── Calcular montoPago según tipo de deuda ────────────────────
-            val montoPago: Double = when (deuda.tipo) {
+// ── Calcular montos ───────────────────────────────────────────────────
+            val montoPago: Double
+            val interesDelMes: Double
+            val totalDebitado: Double
 
-                // ── INTERÉS SIMPLE (Deuda personal) ───────────────────────
-                // Interés se calculó una vez al crear: monto ya incluye interés
-                // El abono descuenta del saldo pendiente directamente
-                "Deuda personal" -> {
-                    if (cuotas <= 1) {
-                        // Pago total con interés simple acumulado
-                        val montoConInteres = deuda.monto * (1 + interes / 100)
-                        montoConInteres - deuda.montoPagado
-                    } else {
-                        // Cuota fija = (monto + interés total) / cuotas
-                        val montoConInteres = deuda.monto * (1 + interes / 100)
-                        montoConInteres / cuotas
-                    }
-                }
-
-                // ── INTERÉS ROTATIVO (Tarjeta de crédito) ─────────────────
-                // El interés se recalcula cada mes sobre el saldo pendiente
-                "Tarjeta de crédito" -> {
-                    val interesDelMes = saldoPendiente * (interes / 100)
-                    val pagoMinimo = deuda.pagoMinimo
-                    // El pago mínimo cubre primero el interés del mes
-                    // Si no hay pago mínimo definido, cobra solo el interés + 5% del capital
-                    if (pagoMinimo > 0) pagoMinimo
-                    else interesDelMes + (saldoPendiente * 0.05)
-                }
-
-                // ── CUOTAS AMORTIZADAS (Préstamo bancario) ────────────────
-                // Fórmula: cuota = P * (r * (1+r)^n) / ((1+r)^n - 1)
-                // donde P=capital, r=tasa mensual, n=cuotas totales
-                "Préstamo bancario" -> {
-                    if (interes <= 0 || cuotas <= 1) {
-                        deuda.monto / cuotas
-                    } else {
-                        val r = interes / 100
-                        val n = cuotas.toDouble()
-                        deuda.monto * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
-                    }
-                }
-
-                // ── OTROS TIPOS: sin interés, cuota fija ──────────────────
-                else -> {
-                    if (cuotas <= 1) saldoPendiente
-                    else deuda.monto / cuotas
-                }
+            if (deuda.tipo == "Tarjeta de crédito") {
+                if (body.montoAbono <= 0) throw Exception("El monto del abono debe ser mayor a cero")
+                if (body.montoAbono > saldoPendiente) throw Exception("El abono supera el saldo pendiente")
+                montoPago = body.montoAbono
+                interesDelMes = saldoPendiente * (producto.interesMensual / 100)
+                totalDebitado = montoPago + interesDelMes
+            } else {
+                montoPago = DeudaService.calcularMontoCuota(deuda)
+                interesDelMes = 0.0
+                totalDebitado = montoPago
+                if (montoPago <= 0) throw Exception("No hay saldo pendiente")
             }
 
-            if (montoPago <= 0) throw Exception("No hay saldo pendiente")
+// ── Validar saldo del producto de pago ────────────────────────────────
+            if (producto.saldoActual < totalDebitado)
+                throw Exception(
+                    "Saldo insuficiente en ${producto.nombre}. " +
+                            "Necesitas $${totalDebitado.toLong()} " +
+                            "(abono $${montoPago.toLong()} + interés $${interesDelMes.toLong()})"
+                )
 
-            // ── Validar saldo del producto ────────────────────────────────
-            if (producto.saldoActual < montoPago)
-                throw Exception("Saldo insuficiente en ${producto.nombre}. Necesitas $${montoPago.toLong()}")
-
-            // ── Descontar saldo del producto ──────────────────────────────
+// ── Descontar del producto de pago ────────────────────────────────────
             ProductoRepository.actualizar(
                 uid, body.productoPagoId, mapOf(
-                    "saldoActual" to (producto.saldoActual - montoPago)
+                    "saldoActual" to (producto.saldoActual - totalDebitado)
                 )
             )
 
-            // ── Actualizar deuda ──────────────────────────────────────────
-            // Para tarjeta rotatoria: el montoPagado acumula los pagos
-            // Para los demás: reduce el saldo pendiente normalmente
-            val nuevasCuotasPagadas = deuda.cuotasPagadas + 1
-
-            val nuevoMontoPagado = when (deuda.tipo) {
-                "Tarjeta de crédito" -> {
-                    // Solo la parte que va a capital (montoPago - interés del mes)
-                    val interesDelMes = saldoPendiente * (interes / 100)
-                    val abonoCapital = montoPago - interesDelMes
-                    deuda.montoPagado + maxOf(abonoCapital, 0.0)
+// ── Si es tarjeta de crédito, reducir saldoUsado del producto vinculado ──
+            if (deuda.tipo == "Tarjeta de crédito" && deuda.productoId != null) {
+                val productoTarjeta = ProductoRepository.obtenerPorId(uid, deuda.productoId)
+                if (productoTarjeta != null) {
+                    ProductoRepository.actualizar(
+                        uid, deuda.productoId, mapOf(
+                            "saldoUsado" to maxOf((productoTarjeta.saldoUsado) - montoPago, 0.0)
+                        )
+                    )
                 }
-
-                else -> deuda.montoPagado + montoPago
             }
 
+// ── Actualizar deuda ──────────────────────────────────────────────────
+            val nuevasCuotasPagadas = deuda.cuotasPagadas + 1
+            val nuevoMontoPagado = deuda.montoPagado + montoPago
             val nuevoEstado = if (nuevoMontoPagado >= deuda.monto) "pagada" else "pendiente"
 
             val deudaActualizada = DeudaRepository.actualizar(
@@ -192,7 +151,7 @@ object DeudaController {
             call.respond(
                 HttpStatusCode.OK, AbonoResponse(
                     deuda = deudaActualizada,
-                    montoPago = montoPago
+                    montoPago = totalDebitado   // lo que realmente salió del bolsillo
                 )
             )
 

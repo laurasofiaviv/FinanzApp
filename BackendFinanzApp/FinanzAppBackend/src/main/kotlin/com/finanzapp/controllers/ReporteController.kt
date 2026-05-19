@@ -1,26 +1,16 @@
 //src/main/kotlin/com/finanzapp/controllers/ReporteController
 package com.finanzapp.controllers
 
-import com.finanzapp.services.AuthService
+
 import com.finanzapp.services.ReporteService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
+import com.finanzapp.utils.getUid
 
 object ReporteController {
 
-    // ── Helpers (mismo patrón que MovimientoController) ───────────────────
 
-    private suspend fun getUid(call: ApplicationCall): String? {
-        val token = call.request.headers["Authorization"]
-            ?.removePrefix("Bearer ")
-            ?: return null
-        return try {
-            AuthService.verificarToken(token)
-        } catch (e: Exception) {
-            null
-        }
-    }
 
     // ── GET /reportes/resumen?mes=5&año=2026 ──────────────────────────────
 
