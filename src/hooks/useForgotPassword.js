@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { forgotPassword } from '../services/authService';
 
+// Valida formato básico de email con regex
 function esEmailValido(email) {
   return /\S+@\S+\.\S+/.test(email);
 }
@@ -9,9 +10,10 @@ function esEmailValido(email) {
 export function useForgotPassword() {
   const [email,   setEmail]   = useState('');
   const [loading, setLoading] = useState(false);
-  const [sent,    setSent]    = useState(false);
+  const [sent,    setSent]    = useState(false);// true cuando el correo fue enviado con éxito
   const [error,   setError]   = useState('');
 
+  // Valida el email y llama al servicio; marca sent=true si Firebase responde OK
   const handleSend = async () => {
     if (!email || !esEmailValido(email)) {
       setError('Ingresa un correo válido');
@@ -29,6 +31,7 @@ export function useForgotPassword() {
     }
   };
 
+  // Limpia el error al editar el campo
   return {
     email, handleEmailChange: (v) => { setEmail(v); setError(''); },
     loading, sent, error,

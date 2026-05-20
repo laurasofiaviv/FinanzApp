@@ -1,28 +1,42 @@
 // src/components/ProductoSelector.js
+
+// Importación de React y componentes visuales
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+
+// Librería de iconos
 import { Feather } from '@expo/vector-icons';
+// Colores globales de la app
 import { COLORS } from '../constants/Colors';
 
+// Colores según franquicia de tarjeta
 const FRANQ_COLOR = {
   visa: '#1A1F71',
   mastercard: '#EB001B',
   amex: '#007BC1',
 };
-
+// Iconos según tipo de producto financiero
 const ICONOS = {
   credito: 'credit-card',
   debito: 'smartphone',
   efectivo: 'dollar-sign',
 };
 
-export default function ProductoSelector({ productos, seleccionada, onSelect }) {
-  if (!productos || productos.length === 0) return null;
+// Selector de productos para elegir medio de pago
+export default function ProductoSelector({
+  productos,      // Lista de productos disponibles
+  seleccionada,   // Producto actualmente seleccionado
+  onSelect        // Función al seleccionar producto
+}) {
+
+  if (!productos || productos.length === 0) return null;// Si no hay productos no renderiza nada
 
   return (
     <View style={styles.tarjetaCard}>
       <Text style={styles.tarjetaTitle}>¿Con qué pagaste?</Text>
+      {/* Lista horizontal de productos */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+        {/* Opción de efectivo */}
         <TouchableOpacity
           style={[styles.tarjetaPill, !seleccionada && styles.tarjetaPillActive]}
           onPress={() => onSelect(null)}
@@ -31,8 +45,9 @@ export default function ProductoSelector({ productos, seleccionada, onSelect }) 
           <Text style={[styles.tarjetaPillText, !seleccionada && { color: '#fff' }]}>Efectivo/Otro</Text>
         </TouchableOpacity>
 
+        {/* Render dinámico de productos */}
         {productos.map((p) => {
-          const activa = seleccionada?.id === p.id;
+          const activa = seleccionada?.id === p.id; // Verifica si el producto está activo
           const color = FRANQ_COLOR[p.franquicia] || COLORS.primary;
           return (
             <TouchableOpacity
@@ -57,6 +72,7 @@ export default function ProductoSelector({ productos, seleccionada, onSelect }) 
         })}
       </ScrollView>
 
+      {/* Mensaje informativo cuando hay producto seleccionado */}
       {seleccionada && (
         <View style={styles.tarjetaInfo}>
           <Feather name="info" size={12} color={COLORS.primary} />
@@ -69,6 +85,9 @@ export default function ProductoSelector({ productos, seleccionada, onSelect }) 
   );
 }
 
+//---------------------------------
+// Estilos del componente
+//---------------------------------
 const styles = StyleSheet.create({
   tarjetaCard: {
     marginTop: 20, backgroundColor: '#fff', borderRadius: 16,

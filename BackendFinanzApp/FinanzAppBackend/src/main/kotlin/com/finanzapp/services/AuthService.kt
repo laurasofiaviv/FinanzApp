@@ -67,6 +67,9 @@ object AuthService {
 
     // ── VERIFICAR TOKEN ───────────────────────────────────────────────────
     suspend fun verificarToken(idToken: String): String = withContext(Dispatchers.IO) {
+        // AuthService: verifica el idToken con Firebase Admin para obtener el uid real.
+        // Esto garantiza que el uid del usuario en Firestore es el mismo que Firebase Auth asignó,
+        // y que el token no fue manipulado por el cliente
         val decoded = FirebaseAuth.getInstance()
             .verifyIdTokenAsync(idToken)
             .get()

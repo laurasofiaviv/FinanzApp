@@ -14,8 +14,10 @@ data class Producto(
     val cupoTotal: Double? = null,  // solo crédito
     val diaCorte: Int? = null,      // solo crédito
     val diaPago: Int? = null,       // solo crédito
+    // Producto separa saldoActual (débito/efectivo) de saldoUsado (crédito)
+    // para reflejar la diferencia entre "cuánto tengo" vs "cuánto he gastado del cupo"
     val saldoActual: Double = 0.0,  // débito y efectivo
-    val saldoUsado: Double = 0.0,   // solo crédito
+    val saldoUsado: Double = 0.0,   // cupo consumido en tarjeta de crédito
     val creadoEn: Long = System.currentTimeMillis(),
     val interesMensual: Double = 0.0,  // solo crédito, ej: 2.5 = 2.5% mensual
 )

@@ -7,6 +7,9 @@ import API_URL from '../config/api';
 async function getToken() {
   const user = getAuth().currentUser;
   if (!user) throw new Error('No hay sesión activa');
+
+  // Obtiene el token JWT de Firebase del usuario actual para autenticar cada request.
+  // Se llama en cada función porque el token puede expirar y getIdToken() lo renueva
   return user.getIdToken();
 }
 
@@ -22,6 +25,8 @@ export async function crearProducto(producto) {
     body: JSON.stringify(producto),
   });
   if (!res.ok) {
+    // Si el backend responde con error HTTP, extrae el mensaje del JSON de respuesta
+    // antes de lanzar la excepción, para mostrar mensajes descriptivos al usuario
     const err = await res.json();
     throw new Error(err.error || 'Error al crear producto');
   }
@@ -56,6 +61,8 @@ export async function editarProducto(productoId, datos) {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      // El token se envía como Bearer en el header Authorization,
+      // que el backend Kotlin valida en cada endpoint protegido
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(datos),

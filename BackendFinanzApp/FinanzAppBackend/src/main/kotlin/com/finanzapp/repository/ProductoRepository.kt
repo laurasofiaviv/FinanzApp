@@ -75,6 +75,9 @@ object ProductoRepository {
             banco = doc.getString("banco") ?: "",
             franquicia = doc.getString("franquicia"),
             cupoTotal = doc.getDouble("cupoTotal"),
+            // obtenerPorId en ProductoRepository construye el objeto manualmente
+            // en vez de usar toObject(), porque Firestore guarda diaCorte como Long
+            // y el modelo espera Int; sin esta conversión el campo llegaría como null
             diaCorte = doc.getLong("diaCorte")?.toInt(),
             diaPago = doc.getLong("diaPago")?.toInt(),
             saldoActual = doc.getDouble("saldoActual") ?: 0.0,

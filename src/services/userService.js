@@ -44,7 +44,10 @@ export async function exportarExcel() {
 
     const csv = await res.text();
 
-    
+
+    // Elimina el BOM (Byte Order Mark) que algunos backends añaden al inicio del CSV.
+    // Sin esto, el encabezado de la primera columna tendría un carácter invisible
+    // que rompería el parseo
     const csvLimpio = csv.replace(/^\uFEFF/, '');
 
     // Parsear CSV respetando campos entre comillas
@@ -52,6 +55,9 @@ export async function exportarExcel() {
         const cols = [];
         let actual = '';
         let dentro = false;
+        // Parser manual de CSV: respeta campos entre comillas que contienen comas,
+        // algo que un simple split(',') no maneja correctamente
+        // ej: "Comida, restaurante",15000  → debe ser UN campo, no dos
         for (const ch of f) {
             if (ch === '"') { dentro = !dentro; }
             else if (ch === ',' && !dentro) { cols.push(actual.trim()); actual = ''; }
@@ -64,6 +70,8 @@ export async function exportarExcel() {
     const encabezados = filas[0];
     const datos = filas.slice(1)
         .filter(f => f.length > 1)
+        // Convierte cada fila en un objeto usando los encabezados como claves,
+        // permitiendo acceder a los datos por nombre de columna en vez de por índice
         .map(fila => Object.fromEntries(encabezados.map((h, i) => [h, fila[i] || ''])));
 
     const gastos = datos.filter(d => d['Tipo'] === 'Gasto');
@@ -76,6 +84,9 @@ export async function exportarExcel() {
 
     // ── Hoja 1: Movimientos ──────────────────────────────────────────────
     const ws1 = XLSX.utils.json_to_sheet(datos);
+    // Calcula el ancho de cada columna Excel dinámicamente:
+    // toma el mayor entre el largo del encabezado y el largo del valor más largo
+    // de esa columna, más 4 caracteres de margen
     ws1['!cols'] = encabezados.map(h => ({
         wch: Math.max(h.length, ...datos.map(r => String(r[h] || '').length)) + 4
     }));
@@ -112,9 +123,13 @@ export async function exportarExcel() {
             .forEach(([cat, total]) => resumenData.push([cat, `$${fmt(total)}`]));
     }
 
+    // aoa_to_sheet (array of arrays) para la hoja Resumen permite mezclar
+    // filas con distinto número de columnas y filas vacías [],
+    // algo que json_to_sheet no soporta bien
     const ws2 = XLSX.utils.aoa_to_sheet(resumenData);
     ws2['!cols'] = [{ wch: 30 }, { wch: 22 }];
     XLSX.utils.book_append_sheet(wb, ws2, 'Resumen');
-
+    // Nombre del archivo incluye la fecha ISO truncada al día (YYYY-MM-DD)
+    // para que cada exportación tenga un nombre único y ordenable
     XLSX.writeFile(wb, `FinanzApp_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

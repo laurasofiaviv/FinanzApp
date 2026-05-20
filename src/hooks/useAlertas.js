@@ -4,6 +4,7 @@ import { useProductos } from '../context/ProductContext';
 import { useDeudas } from '../context/DeudaContext';
 
 // Calcula cuántos días faltan desde hoy hasta un día del mes
+// Días desde hoy hasta un día del mes (si ya pasó, calcula para el mes siguiente)
 function diasHastaElDia(diaMes) {
     if (!diaMes) return null;
     const hoy = new Date();
@@ -14,7 +15,9 @@ function diasHastaElDia(diaMes) {
     return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
 }
 
+
 // Calcula días hasta una fecha en formato dd/mm/yyyy
+// Días desde hoy hasta una fecha en formato dd/mm/yyyy (negativo = ya venció)
 function diasHastaFecha(fechaStr) {
     if (!fechaStr) return null;
     const partes = fechaStr.split('/');
@@ -32,7 +35,7 @@ export function useAlertas() {
     const { gastos } = useFinanz();
     const alertas = [];
 
-    // ── 1. FECHAS DE CORTE Y PAGO DE TARJETAS ──────────────────────────────
+    // ── 1. FECHAS DE CORTE Y PAGO DE TARJETAS de CRÉDITO──────────────────────────────
     const tarjetas = productos.filter(p => p.tipo === 'credito');
 
     tarjetas.forEach(tarjeta => {
@@ -59,7 +62,7 @@ export function useAlertas() {
             });
         }
 
-        // Alerta de fecha de pago (10 días antes)
+        // Alerta de pago: urgente ≤3 días, recordatorio ≤10 días
         if (diasPago !== null && diasPago <= 10) {
             alertas.push({
                 id: `pago-${tarjeta.id}`,
@@ -77,7 +80,7 @@ export function useAlertas() {
             });
         }
 
-        // Alerta de cupo alto (más del 80%)
+        // Alerta de cupo alto: se activa cuando el uso supera el 80%
         if (pctUso >= 80) {
             alertas.push({
                 id: `cupo-${tarjeta.id}`,
@@ -133,12 +136,14 @@ export function useAlertas() {
 
         // Mensual: alerta 5 días antes
         // Quincenal: alerta 7 días antes (más anticipación porque es más frecuente)
-        const umbral = frecuencia === 'quincenal' ? 60 : 60;
+        // Umbral de anticipación: 7 días para quincenales, 5 para mensuales
+        const umbral = frecuencia === 'quincenal' ? 7 : 5;
 
         if (dias <= umbral && dias >= 0) {
             const esHoy = dias === 0;
             const esMañana = dias === 1;
 
+            // Tipo 'accion' cuando el modo es 'preguntar' y vence hoy (requiere confirmación del usuario)
             alertas.push({
                 id: `recurrente-${gasto.id}`,
                 tipo: modo === 'preguntar' && esHoy ? 'accion' : dias <= 2 ? 'recordatorio' : 'info',
@@ -157,6 +162,8 @@ export function useAlertas() {
                 color: esHoy
                     ? modo === 'preguntar' ? '#8E44AD' : '#27AE60'
                     : dias <= 2 ? '#F39C12' : '#27AE60',
+
+                    // Solo incluye accionRegistrar si el usuario debe confirmar manualmente hoy
                 accionRegistrar: modo === 'preguntar' && esHoy ? {
                     gastoId: gasto.id,
                     monto: gasto.monto,
@@ -169,7 +176,7 @@ export function useAlertas() {
         }
     });
 
-    // Ordenar: urgentes primero
+    // Ordena: urgente → advertencia → accion → recordatorio → info
     const orden = { urgente: 0, advertencia: 1, accion: 2, recordatorio: 3, info: 4 };
     alertas.sort((a, b) => (orden[a.tipo] ?? 5) - (orden[b.tipo] ?? 5));
 

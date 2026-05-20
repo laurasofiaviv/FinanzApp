@@ -36,15 +36,17 @@ fun Application.module() {
         })
     }
 
+    // CORS con anyHost() permite peticiones desde cualquier origen.
+    // Adecuado para desarrollo; en producción debería restringirse al dominio del cliente
     install(CORS) {
         anyHost()
         allowNonSimpleContentTypes = true
         allowHeader(HttpHeaders.ContentType)
-        allowHeader(HttpHeaders.Authorization)
+        allowHeader(HttpHeaders.Authorization)// necesario para el Bearer token
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
-        allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Put)// Ktor no incluye PUT en CORS por defecto
         allowMethod(HttpMethod.Delete)
     }
 

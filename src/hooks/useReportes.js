@@ -16,24 +16,27 @@ function agruparPorCategoria(gastos) {
         mapa[cat] = (mapa[cat] || 0) + parseFloat(g.monto || 0);
     });
     return Object.entries(mapa).map(([name, value], i) => ({
-        name:            name.replace(/^\S+\s/, ''),
-        fullName:        name,
+        name: name.replace(/^\S+\s/, ''),
+        fullName: name,
         value,
-        color:           PALETTE[i % PALETTE.length],
+        color: PALETTE[i % PALETTE.length],
         legendFontColor: '#666666',
-        legendFontSize:  12,
+        legendFontSize: 12,
     }));
 }
 
 function ultimos6Meses(ingresos, gastos) {
     const hoy = new Date();
     const meses = [];
+    // Itera los últimos 6 meses hacia atrás desde hoy usando índices negativos en Date,
+    // JavaScript los resuelve correctamente cruzando años automáticamente
     for (let i = 5; i >= 0; i--) {
         const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
-        const mes   = fecha.getMonth();
-        const año   = fecha.getFullYear();
+        const mes = fecha.getMonth();
+        const año = fecha.getFullYear();
         const label = fecha.toLocaleString('es-CO', { month: 'short' });
         const sumIn = ingresos
+        // Filtra movimientos por mes y año exacto para evitar mezclar datos entre períodos
             .filter((x) => { const d = new Date(x.creadoEn); return d.getMonth() === mes && d.getFullYear() === año; })
             .reduce((a, x) => a + parseFloat(x.monto || 0), 0);
         const sumGa = gastos
@@ -46,6 +49,7 @@ function ultimos6Meses(ingresos, gastos) {
 
 function mayorGastoDe(gastos) {
     if (!gastos.length) return null;
+    // reduce para encontrar el gasto mayor comparando montos uno a uno
     return gastos.reduce((a, b) =>
         parseFloat(a.monto) > parseFloat(b.monto) ? a : b
     );
@@ -69,14 +73,16 @@ export function formatCOP(num) {
 export function useReportes() {
     const { gastos, ingresos, totalGastosMes, totalIngresosMes, balanceMes } = useFinanz();
 
-    const categorias   = agruparPorCategoria(gastos);
-    const meses        = ultimos6Meses(ingresos, gastos);
-    const maxVal       = Math.max(...meses.map((m) => Math.max(m.ingreso, m.gasto)), 1);
-    const mayorGasto   = mayorGastoDe(gastos);
+    const categorias = agruparPorCategoria(gastos);
+    const meses = ultimos6Meses(ingresos, gastos);
+    // maxVal se usa para normalizar las barras del gráfico; el ,1 evita división por cero
+// si todos los valores son 0
+    const maxVal = Math.max(...meses.map((m) => Math.max(m.ingreso, m.gasto)), 1);
+    const mayorGasto = mayorGastoDe(gastos);
     const catFrecuente = categoriaMasFrecuente(categorias);
-    const balance      = balanceMes();
-    const balancePos   = balance >= 0;
-    const mesActual    = getMesActual();
+    const balance = balanceMes();
+    const balancePos = balance >= 0;
+    const mesActual = getMesActual();
 
     return {
         // datos para gráficas
@@ -91,7 +97,7 @@ export function useReportes() {
         mesActual,
         // totales del mes
         totalIngresos: totalIngresosMes(),
-        totalGastos:   totalGastosMes(),
+        totalGastos: totalGastosMes(),
         // helper de formato que la pantalla necesita
         formatCOP,
     };

@@ -5,6 +5,7 @@ import { useProductos } from '../context/ProductContext';
 import { fmt, parsear, isoADisplay } from '../utils/formatUtils';
 
 // ── CONFIGURACIÓN POR TIPO ────────────────────────────────────────────────
+// Icono, color y campos requeridos por cada tipo de deuda en el formulario
 export const TIPOS_CONFIG = {
   'Tarjeta de crédito': {
     icon: 'credit-card',
@@ -47,6 +48,13 @@ export const TIPOS_CONFIG = {
 export const TIPOS_LIST = Object.keys(TIPOS_CONFIG);
 
 // ── CÁLCULO FINANCIERO (puro — sin estado) ────────────────────────────────
+/**
+ * Calcula un resumen financiero estimado según el tipo de deuda.
+ * Tarjeta: proyecta saldo con interés rotativo.
+ * Préstamo: aplica fórmula de amortización francesa.
+ * Arriendo: devuelve el monto fijo con día de pago.
+ * Retorna null si el tipo no tiene cálculo especial.
+ */
 export function calcularResumen(tipo, form) {
   const monto = parseFloat(form.montoNum) || 0;
   const interes = parseFloat(form.interes) || 0;
@@ -84,6 +92,7 @@ export function calcularResumen(tipo, form) {
 }
 
 // ── ESTADO INICIAL DEL FORMULARIO ─────────────────────────────────────────
+// Valores iniciales del formulario de nueva deuda
 const formVacio = () => ({
   descripcion: '',
   montoNum: '',
@@ -107,6 +116,7 @@ export function useDebt() {
   const { deudas, agregarDeuda, pagarCuota } = useDeudas();
   const { productos } = useProductos();
 
+  // Solo las tarjetas de crédito pueden usarse para pagar cuotas
   const tarjetas = (productos || []).filter((p) => p.tipo === 'credito');
 
   const [showForm, setShowForm] = useState(false);
@@ -117,20 +127,24 @@ export function useDebt() {
   const [errors, setErrors] = useState({});
   const [deudaAbonar, setDeudaAbonar] = useState(null);
 
+  // Actualiza un campo del formulario limpiando su error previo
   const setField = (k, v) => setFormState((prev) => ({ ...prev, [k]: v }));
 
+  // Limpia el formulario y el tipo seleccionado
   const resetForm = () => {
     setTipoSeleccionado(null);
     setFormState(formVacio());
     setErrors({});
   };
 
+  // Cambia el tipo y resetea el form conservando solo la descripción
   const seleccionarTipo = (tipo) => {
     setTipoSeleccionado(tipo);
     setFormState({ ...formVacio(), descripcion: form.descripcion });
     setShowTipos(false);
   };
 
+  // Valida monto, tipo seleccionado y cupo disponible para tarjeta
   const validar = () => {
     const e = {};
     if (!form.montoNum || form.montoNum <= 0) e.monto = 'Ingresa un monto';
@@ -144,6 +158,7 @@ export function useDebt() {
     return Object.keys(e).length === 0;
   };
 
+  // Persiste la deuda y cierra el formulario si tiene éxito
   const handleGuardar = async () => {
     if (!validar()) return;
     const ok = await agregarDeuda({
@@ -166,11 +181,13 @@ export function useDebt() {
     }
   };
 
+  // Abre el modal de abono guardando la deuda seleccionada
   const abrirModalAbonar = (deuda) => {
     setDeudaAbonar(deuda);
     setShowModalAbonar(true);
   };
 
+  // Ejecuta el abono con el monto ingresado en el formulario y limpia el estado del modal
   const handleAbonar = (productoId) => {
     if (!deudaAbonar) return;
     const monto = parseFloat(form.montoAbono) || 0;
@@ -182,6 +199,7 @@ export function useDebt() {
     setField('montoAbonoDisplay', '');
   };
 
+  // Cierra el modal de abono sin registrar ningún pago
   const cancelarAbonar = () => {
     setShowModalAbonar(false);
     setDeudaAbonar(null);
@@ -189,6 +207,7 @@ export function useDebt() {
     setField('montoAbonoDisplay', '');
   };
 
+  // Cuota estimada: si hay una sola cuota devuelve el saldo pendiente, sino divide el monto total
   const montoCuotaDeuda = (deuda) => {
     if (!deuda) return 0;
     if (!deuda.cuotas || parseInt(deuda.cuotas) <= 1) {
@@ -197,27 +216,32 @@ export function useDebt() {
     return deuda.monto / parseInt(deuda.cuotas);
   };
 
+  // Formatea el monto de abono en tiempo real al tipear
   const handleMontoAbono = (texto) => {
     const num = parsear(texto);
     setField('montoAbono', num === '' ? '' : String(num));
     setField('montoAbonoDisplay', num === '' ? '' : fmt(num));
   };
 
+  // Deudas con saldo pendiente (las espejo solo aparecen si tienen monto > 0)
   const deudasPendientes = deudas.filter((d) => {
     if (d.esEspejo) return (d.monto || 0) > 0 && (d.montoPagado || 0) < d.monto;
     return (d.montoPagado || 0) < (d.monto || 0);
   });
 
+  // Deudas completamente saldadas (las espejo nunca pasan a esta lista)
   const deudasPagadas = deudas.filter((d) => {
     if (d.esEspejo) return false;
     return (d.montoPagado || 0) >= (d.monto || 0) && (d.monto || 0) > 0;
   });
 
+  // Suma del saldo pendiente de todas las deudas activas
   const totalPendiente = deudasPendientes.reduce(
     (acc, d) => acc + parseFloat(d.monto || 0) - parseFloat(d.montoPagado || 0),
     0,
   );
 
+  // Preview financiero calculado en tiempo real mientras el usuario llena el form
   const resumenFinanciero =
     tipoSeleccionado && form.montoNum
       ? calcularResumen(tipoSeleccionado, form)

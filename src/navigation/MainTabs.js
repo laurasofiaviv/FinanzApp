@@ -6,14 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS } from '../constants/Colors';
 
-import DashboardScreen  from '../screens/DashboardScreen';
-import DebtScreen       from '../screens/DebtScreen';
+import DashboardScreen from '../screens/DashboardScreen';
+import DebtScreen from '../screens/DebtScreen';
 import RegisterMovScreen from '../screens/RegisterMovScreen';
-import ReportesScreen   from '../screens/ReportesScreen';
-import ProfileScreen    from '../screens/ProfileScreen';
+import ReportesScreen from '../screens/ReportesScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
+// Componente AddButton separado: eleva el botón central 20px sobre la tab bar
+// con top: -20, creando el efecto de botón flotante típico en apps de finanzas
 function AddButton({ onPress }) {
   return (
     <View style={styles.addButtonWrapper}>
@@ -38,32 +40,37 @@ export default function MainTabs() {
           backgroundColor: '#fff',
         },
         tabBarIcon: ({ focused, color }) => {
+          // Los iconos cambian entre versión sólida y outline según si el tab está activo,
+          // usando el nombre de la ruta como clave para evitar un switch/if largo
           const icons = {
-            Inicio:    focused ? 'home'       : 'home-outline',
-            Deudas:    focused ? 'wallet'     : 'wallet-outline',
+            Inicio: focused ? 'home' : 'home-outline',
+            Deudas: focused ? 'wallet' : 'wallet-outline',
             Registrar: 'add',
-            Reportes:  focused ? 'bar-chart'  : 'bar-chart-outline',
-            Perfil:    focused ? 'person'     : 'person-outline',
+            Reportes: focused ? 'bar-chart' : 'bar-chart-outline',
+            Perfil: focused ? 'person' : 'person-outline',
           };
           return <Ionicons name={icons[route.name]} size={22} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Inicio"    component={DashboardScreen} />
-      <Tab.Screen name="Deudas"    component={DebtScreen} />
+      <Tab.Screen name="Inicio" component={DashboardScreen} />
+      <Tab.Screen name="Deudas" component={DebtScreen} />
       <Tab.Screen
         name="Registrar"
         component={RegisterMovScreen}
         options={{
           tabBarLabel: 'Registrar',
+          // tabBarButton reemplaza completamente el botón por defecto de "Registrar"
+          // con el AddButton personalizado, pasándole los props de navegación originales
           tabBarButton: (props) => <AddButton {...props} />,
         }}
       />
       <Tab.Screen name="Reportes" component={ReportesScreen} />
-      <Tab.Screen name="Perfil"   component={ProfileScreen} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
+
 
 const styles = StyleSheet.create({
   addButtonWrapper: { top: -20, justifyContent: 'center', alignItems: 'center' },

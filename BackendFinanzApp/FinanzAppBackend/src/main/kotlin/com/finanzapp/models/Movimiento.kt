@@ -15,6 +15,8 @@ data class Movimiento(
     val fecha: String = "",
     val productoId: String? = null,  // tarjeta o cuenta vinculada
     val pagoConTarjeta: String? = null,
+    // RecurrenteData es null si el movimiento no es recurrente,
+    // lo que permite distinguir entre "no recurrente" y "recurrente sin configurar"
     val recurrente: RecurrenteData? = null,
     val creadoEn: Long = System.currentTimeMillis()
 )

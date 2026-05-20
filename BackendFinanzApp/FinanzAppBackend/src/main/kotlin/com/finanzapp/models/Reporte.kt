@@ -16,7 +16,8 @@ data class EvolucionSemanal(
     val gastos: Double = 0.0,
     val ingresos: Double = 0.0
 )
-
+// ReporteResumen agrega en una sola respuesta todos los datos que la UI necesita
+// para la pantalla de reportes, evitando múltiples llamadas al backend
 @Serializable
 data class ReporteResumen(
     val totalGastos: Double = 0.0,

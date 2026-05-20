@@ -17,24 +17,27 @@ const firebaseConfig = {
   messagingSenderId: "94184381399",
   appId: "1:94184381399:web:d51f12e8832842c1620992",
 };
-
+// Evita reinicializar Firebase si ya existe una instancia activa (ej: hot reload en desarrollo)
 if (!getApps().length) initializeApp(firebaseConfig);
 
 const auth = getAuth();
 
 // ── REGISTRO ──────────────────────────────────────────────────────────────────
 export async function registerUser({ nombre, email, password }) {
-  // 1. Firebase cliente crea la cuenta
+  // 1. Firebase crea la cuenta en su sistema de autenticación (client-side)
   const credential = await createUserWithEmailAndPassword(auth, email, password);
 
-  // 2. Envía el correo de verificación
+  // 2. Dispara el correo de verificación antes de guardar en Firestore,
+  //    así el usuario sabe que debe verificar su email desde el inicio
   await sendEmailVerification(credential.user);
 
-  // 3. Guarda en Firestore via backend
+  // 3. Obtiene el JWT de Firebase para autenticar la llamada al backend propio
   const idToken = await credential.user.getIdToken();
   const res = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // Se envía el idToken al backend para que lo valide con Firebase Admin
+    // y cree el documento del usuario en Firestore de forma segura
     body: JSON.stringify({ nombre, email, password, idToken }),
   });
 
@@ -44,11 +47,16 @@ export async function registerUser({ nombre, email, password }) {
   }
 
   // Sin signOut — AppNavigator detecta emailVerified=false y muestra EmailSent
+  // No hace signOut después del registro: AppNavigator lee emailVerified=false
+  // y redirige automáticamente a la pantalla de "verifica tu email"
   return await res.json();
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────────────────────
 export async function loginUser({ email, password }) {
+  // Primero autentica en Firebase, luego valida en el backend propio.
+  // Doble verificación: Firebase confirma credenciales, el backend confirma que
+  // el usuario existe en Firestore y la sesión es válida
   const credential = await signInWithEmailAndPassword(auth, email, password);
   const idToken = await credential.user.getIdToken();
 

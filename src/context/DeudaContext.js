@@ -12,6 +12,7 @@ import { useProductos } from './ProductContext';
 export const DeudaContext = createContext();
 
 export const DeudaProvider = ({ children }) => {
+    // Necesita setProductos para actualizar saldos cuando se paga una cuota
     const { setProductos } = useProductos();
     const [deudas, setDeudas] = useState([]);
 
@@ -29,6 +30,7 @@ export const DeudaProvider = ({ children }) => {
         return () => unsubscribe();
     }, []);
 
+    // Persiste una nueva deuda en Firestore y la agrega al estado local
     const agregarDeuda = async (deuda) => {
         try {
             const guardada = await crearDeudaAPI(deuda);
@@ -41,6 +43,7 @@ export const DeudaProvider = ({ children }) => {
         }
     };
 
+    // Marca una deuda como pagada en memoria y resetea el saldoUsado del producto vinculado
     const marcarDeudaPagada = (id) => {
         setDeudas((prev) => prev.map((d) => d.id === id ? { ...d, estado: 'pagada' } : d));
         const deuda = deudas.find((d) => d.id === id);
@@ -51,10 +54,12 @@ export const DeudaProvider = ({ children }) => {
         }
     };
 
+    // Registra un abono en el backend, actualiza la deuda y descuenta el saldo del producto usado para pagar
     const pagarCuota = async (deudaId, productoPagoId, montoAbono) => {
         try {
             const { deuda: deudaActualizada, montoPago } = await abonarDeudaAPI(deudaId, productoPagoId, montoAbono);
             setDeudas((prev) => prev.map((d) => (d.id === deudaId ? deudaActualizada : d)));
+            // Descuenta del producto con el que se realizó el pago
             setProductos?.((prev) =>
                 prev.map((p) =>
                     p.id === productoPagoId
@@ -77,5 +82,5 @@ export const DeudaProvider = ({ children }) => {
         </DeudaContext.Provider>
     );
 };
-
+// Hook de acceso directo al contexto de deudas
 export const useDeudas = () => useContext(DeudaContext);

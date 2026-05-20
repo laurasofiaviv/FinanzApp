@@ -21,6 +21,8 @@ export const TIPO_ICONS = {
   efectivo: { name: 'dollar-sign', color: '#F39C12' },
 };
 
+// factory function (no objeto directo) para que cada llamada genere
+// una referencia nueva en memoria y no se compartan datos entre resets
 const formVacio = () => ({
   tipo: 'credito',
   franquicia: 'visa',
@@ -43,6 +45,8 @@ export function useProducts() {
   const [showBancos, setShowBancos] = useState(false);
   const [form, setForm] = useState(formVacio());
 
+  // Actualiza un campo y borra su error al mismo tiempo,
+  // evitando que el mensaje de validación persista tras corregir el campo
   const setField = (k, v) =>
     setForm((p) => ({ ...p, [k]: v, errors: { ...p.errors, [k]: null } }));
 
@@ -50,6 +54,9 @@ export function useProducts() {
     const n = parsear(t);
     setForm((p) => ({
       ...p,
+      // handleCupo / handleSaldo siguen el mismo patrón:
+      // cupoTotal guarda el número real para cálculos,
+      // cupoDisplay guarda el string formateado para mostrarlo en el input
       cupoTotal: n,
       cupoDisplay: n === '' ? '' : fmt(n),
       errors: { ...p.errors, cupoTotal: null },
@@ -71,6 +78,8 @@ export function useProducts() {
     if (!form.nombre.trim()) e.nombre = 'Ingresa un nombre';
     if (form.tipo === 'credito') {
       if (!form.cupoTotal || form.cupoTotal <= 0) e.cupoTotal = 'Ingresa el cupo';
+      // La validación de días acepta 1–31 sin verificar si el día existe en el mes,
+      // la lógica de negocio más fina queda delegada al backend
       if (!form.diaCorte || form.diaCorte < 1 || form.diaCorte > 31) e.diaCorte = 'Día inválido';
       if (!form.diaPago || form.diaPago < 1 || form.diaPago > 31) e.diaPago = 'Día inválido';
     }
@@ -86,9 +95,13 @@ export function useProducts() {
       banco: form.banco,
       franquicia: form.tipo === 'credito' ? form.franquicia : null,
       cupoTotal: form.tipo === 'credito' ? form.cupoTotal : null,
+      // parseInt convierte el string del input a número antes de enviarlo al backend;
+      // sin esto diaCorte llegaría como "15" en vez de 15
       diaCorte: form.tipo === 'credito' ? parseInt(form.diaCorte) : null,
       diaPago: form.tipo === 'credito' ? parseInt(form.diaPago) : null,
       saldoActual:
+        // saldoActual solo aplica a efectivo y débito; en crédito el saldo
+        // se calcula desde el cupo y los movimientos, no se ingresa manualmente
         form.tipo === 'efectivo' || form.tipo === 'debito'
           ? form.saldoActual
           : null,
@@ -102,6 +115,8 @@ export function useProducts() {
 
   const creditCards = productos.filter((p) => p.tipo === 'credito');
   const otros = productos.filter((p) => p.tipo !== 'credito');
+  // cupoLibre resta el saldo ya consumido al cupo total;
+  // el || 0 evita NaN si alguno de los dos viene undefined del backend
   const cupoLibre = (producto) => (producto.cupoTotal || 0) - (producto.saldoUsado || 0);
 
   return {

@@ -18,12 +18,14 @@ data class Deuda(
     val fechaVencimiento: String = "",
     val fechaInicio: String = "",
     val diaPago: String = "",
+    // Deuda tiene campos opcionales (String?) para soportar distintos tipos:
+    // tarjetaId y productoId solo aplican a deudas de tarjeta de crédito
     val tarjetaId: String? = null,
     val tarjetaNombre: String? = null,
     val pagoMinimo: Double = 0.0,
     val estado: String = "pendiente",
     val creadoEn: Long = System.currentTimeMillis(),
-    val esEspejo: Boolean = false,
+    val esEspejo: Boolean = false, // marca deudas generadas automáticamente desde gastos
     val productoId: String? = null,
     val cupoTotal: Double = 0.0,
     val franquicia: String? = null,

@@ -21,6 +21,8 @@ object ReporteController {
         }
 
         val mesParam  = call.request.queryParameters["mes"]?.toIntOrNull()
+        // Acepta "año" con tilde o "anio" sin tilde para compatibilidad entre clientes
+        // que puedan tener problemas de encoding con caracteres especiales en la URL
         val anioParam = call.request.queryParameters["año"]?.toIntOrNull()
             ?: call.request.queryParameters["anio"]?.toIntOrNull()   // alternativa sin tilde
 
@@ -32,6 +34,8 @@ object ReporteController {
             return
         }
 
+        // Valida el rango del mes antes de llamar al service,
+        // evitando que lleguen valores como mes=13 o mes=0 a Firestore
         if (mesParam !in 1..12) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "mes debe estar entre 1 y 12"))
             return
@@ -59,6 +63,8 @@ object ReporteController {
         try {
             val csv = ReporteService.exportarCsv(uid)
 
+            // Fuerza la descarga en el navegador con Content-Disposition attachment,
+            // en vez de mostrar el CSV inline en el browser
             call.response.header(
                 HttpHeaders.ContentDisposition,
                 "attachment; filename=\"movimientos.csv\""

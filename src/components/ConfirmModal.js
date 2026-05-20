@@ -1,22 +1,25 @@
 //src/components/ConfirmModal.js
 
+// Importación de React y componentes base de React Native
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+// Iconos y colores globales de la aplicación
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
 
+// Modal reutilizable de confirmación para acciones importantes-> EditProduct, ProductScreen, ProfileScreen
 export default function ConfirmModal({
-  visible,
-  icon = 'alert-circle-outline',
-  iconColor = COLORS.danger,
-  iconBg = '#FFF0F0',
-  title,
-  message,
-  confirmText = 'Confirmar',
-  cancelText = 'Cancelar',
-  confirmColor = COLORS.danger,
-  onConfirm,
-  onCancel,
+  visible, // Controla si el modal se muestra o no
+  icon = 'alert-circle-outline', // Icono principal del modal
+  iconColor = COLORS.danger, // Color del icono
+  iconBg = '#FFF0F0', // Fondo circular del icono
+  title, // Título principal
+  message, // Mensaje descriptivo
+  confirmText = 'Confirmar', // Texto botón confirmar
+  cancelText = 'Cancelar', // Texto botón cancelar
+  confirmColor = COLORS.danger, // Color botón confirmar
+  onConfirm, // Acción al confirmar
+  onCancel, // Acción al cancelar
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -27,12 +30,16 @@ export default function ConfirmModal({
           </View>
           <Text style={styles.title}>{title}</Text>
           {message ? <Text style={styles.message}>{message}</Text> : null}
+
+          {/* Botón de confirmación */}
           <TouchableOpacity
             style={[styles.btnConfirm, { backgroundColor: confirmColor }]}
             onPress={onConfirm}
           >
             <Text style={styles.btnConfirmText}>{confirmText}</Text>
           </TouchableOpacity>
+
+          {/* Botón cancelar */}
           <TouchableOpacity style={styles.btnCancel} onPress={onCancel}>
             <Text style={styles.btnCancelText}>{cancelText}</Text>
           </TouchableOpacity>
@@ -41,7 +48,9 @@ export default function ConfirmModal({
     </Modal>
   );
 }
-
+//---------------------------------
+// Estilos del componente
+//---------------------------------
 const styles = StyleSheet.create({
   overlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',

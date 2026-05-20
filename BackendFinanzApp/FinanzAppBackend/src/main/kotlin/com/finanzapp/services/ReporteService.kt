@@ -21,6 +21,9 @@ object ReporteService {
 
         // Filtrar por mes y año
         val filtrados = todos.filter { mov ->
+            // ReporteService: usa ZoneId "America/Bogota" para convertir el timestamp epoch
+            // a fecha local correcta, evitando que un movimiento registrado a las 11pm
+            // aparezca en el día siguiente por diferencia de zona horaria UTC
             val fecha = Instant.ofEpochMilli(mov.creadoEn)
                 .atZone(ZoneId.of("America/Bogota"))
             fecha.monthValue == mes && fecha.year == anio
@@ -89,6 +92,8 @@ object ReporteService {
                 .toLocalDate()
 
             // Escapar campos con comas envolviéndolos en comillas
+            // exportarCsv: envuelve campos en comillas para escapar comas internas,
+            // y reemplaza comillas dentro del contenido por doble comilla (estándar CSV RFC 4180)
             fun esc(s: String?) = "\"${(s ?: "").replace("\"", "\"\"")}\""
 
             val tipo = if (mov.tipo == "gasto") "Gasto" else "Ingreso"

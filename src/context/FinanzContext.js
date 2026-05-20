@@ -8,11 +8,17 @@ import { crearMovimiento, obtenerMovimientos } from '../services/movimientoServi
 
 export const FinanzContext = createContext();
 
+/**
+ * Maneja gastos, ingresos, recurrencia y estadísticas del mes.
+ * Recibe productos, setProductos y cargarGastoATarjeta desde ProductContext
+ * vía props para evitar dependencia circular entre contextos.
+ */
 export const FinanzProvider = ({ children, productos, setProductos, cargarGastoATarjeta }) => {
   const [gastos, setGastos] = useState([]);
   const [ingresos, setIngresos] = useState([]);
 
-  // ── CARGA INICIAL DESDE FIRESTORE ────────────────────────────────────────
+  // ── CARGA INICIAL ────────────────────────────────────────────────────────
+  // Obtiene gastos e ingresos al detectar sesión activa; los limpia al logout
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -42,10 +48,19 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
   }, []);
 
   // ── MOTOR DE RECURRENCIA ─────────────────────────────────────────────────
+  // Se ejecuta 1.5s después de cualquier cambio en la cantidad de gastos
   useEffect(() => {
     const timer = setTimeout(() => procesarGastosRecurrentes(), 1500);
     return () => clearTimeout(timer);
   }, [gastos.length]);
+
+  /**
+   * Recorre los gastos con recurrencia activa.
+   * Si la fecha de cobro ya pasó:
+   *   - modo 'auto': genera el gasto automáticamente
+   *   - modo 'preguntar': muestra un Alert para que el usuario confirme
+   * Actualiza la próxima fecha de cobro en ambos casos.
+   */
 
   const procesarGastosRecurrentes = () => {
     setGastos((prev) => {
@@ -57,6 +72,7 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
           const fechaCobro = new Date(g.recurrente.proximoCobro);
           if (hoy >= fechaCobro) {
             huboCambios = true;
+            // Calcula la siguiente fecha según frecuencia
             const siguienteFecha = new Date(fechaCobro);
             if (g.recurrente.frecuencia === 'mensual') {
               siguienteFecha.setMonth(siguienteFecha.getMonth() + 1);
@@ -64,6 +80,7 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
               siguienteFecha.setDate(siguienteFecha.getDate() + 15);
             }
             if (g.recurrente.modo === 'auto') {
+              // Copia el gasto con nuevo id y fecha de hoy, sin recurrencia
               nuevosAuto.push({
                 ...g,
                 id: Date.now().toString() + Math.random().toString().substring(2, 6),
@@ -99,9 +116,17 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
 
 
 
-  // ── GASTOS E INGRESOS ────────────────────────────────────────────────────
+  // ── GASTOS ───────────────────────────────────────────────────────────────
+
+  /**
+   * Valida saldo/cupo antes de guardar.
+   * Persiste el movimiento en Firestore y actualiza el saldo del producto vinculado.
+   * Para tarjetas de crédito delega en cargarGastoATarjeta (ProductContext).
+   */
   const agregarGasto = async (gasto) => {
     const monto = parseFloat(gasto.monto || 0);
+
+    // Validación de saldo antes de persistir
     if (gasto.productoId) {
       const producto = productos.find(p => p.id === gasto.productoId);
       if (producto?.tipo === 'credito') {
@@ -129,6 +154,8 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
         recurrente: gasto.recurrente || null,
       });
       setGastos((prev) => [guardado, ...prev]);
+
+      // Actualiza saldo del producto según su tipo
       if (gasto.productoId) {
         const producto = productos.find(p => p.id === gasto.productoId);
         if (producto?.tipo === 'credito') {
@@ -147,6 +174,12 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
     }
   };
 
+  // ── INGRESOS ─────────────────────────────────────────────────────────────
+
+  /**
+   * Persiste un ingreso y suma el monto al producto vinculado.
+   * Si no hay producto vinculado, acredita al producto de tipo 'efectivo'.
+   */
   const agregarIngreso = async (ingreso) => {
     const monto = parseFloat(ingreso.monto || 0);
     try {
@@ -165,6 +198,7 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
           prev.map(p => p.id === ingreso.productoId ? { ...p, saldoActual: (p.saldoActual || 0) + monto } : p)
         );
       } else {
+        // Fallback: acredita al producto efectivo si existe
         const efectivo = productos.find(p => p.tipo === 'efectivo');
         if (efectivo) {
           setProductos(prev =>
@@ -183,6 +217,7 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
 
 
   // ── ESTADÍSTICAS ─────────────────────────────────────────────────────────
+  // Suma total de gastos del mes y año actuales
   const totalGastosMes = () => {
     const ahora = new Date();
     return gastos
@@ -190,6 +225,7 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
       .reduce((acc, g) => acc + parseFloat(g.monto || 0), 0);
   };
 
+  // Suma total de ingresos del mes y año actuales
   const totalIngresosMes = () => {
     const ahora = new Date();
     return ingresos
@@ -197,14 +233,17 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
       .reduce((acc, i) => acc + parseFloat(i.monto || 0), 0);
   };
 
+  // Suma de saldoActual de todos los productos (balance real de cuentas)
   const balanceMes = () =>
     !productos || productos.length === 0 ? 0 : productos.reduce((acc, p) => acc + (p.saldoActual || 0), 0);
 
+  // Últimos 5 movimientos (gastos + ingresos) ordenados por fecha descendente
   const movimientosRecientes = () =>
     [...gastos.map(g => ({ ...g, tipo: 'gasto' })), ...ingresos.map(i => ({ ...i, tipo: 'ingreso' }))]
       .sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn))
       .slice(0, 5);
 
+  // Filtra los productos de tipo crédito (tarjetas)
   const tarjetasCredito = () => (productos || []).filter((p) => p.tipo === 'credito');
 
   return (
@@ -219,4 +258,5 @@ export const FinanzProvider = ({ children, productos, setProductos, cargarGastoA
   );
 };
 
+// Hook de acceso directo al contexto financiero
 export const useFinanz = () => useContext(FinanzContext);

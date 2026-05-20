@@ -83,10 +83,11 @@ object DeudaController {
 
         try {
             val body = call.receive<AbonoRequest>()
-            val deuda = DeudaRepository.obtenerPorId(uid, deudaId)
-                ?: throw Exception("Deuda no encontrada")
-            val producto = ProductoRepository.obtenerPorId(uid, body.productoPagoId)
-                ?: throw Exception("Producto no encontrado")
+            // Obtiene la deuda y el producto de pago, lanzando excepción si alguno no existe.
+// El throw detiene la ejecución y cae al catch, que responde con 400 + mensaje
+            val deuda = DeudaRepository.obtenerPorId(uid, deudaId) ?: throw Exception("Deuda no encontrada")
+            val producto =
+                ProductoRepository.obtenerPorId(uid, body.productoPagoId) ?: throw Exception("Producto no encontrado")
 
             val saldoPendiente = deuda.monto - deuda.montoPagado
 
@@ -95,28 +96,32 @@ object DeudaController {
             val interesDelMes: Double
             val totalDebitado: Double
 
+            // Tarjeta de crédito: el usuario elige cuánto abona y se cobra interés sobre
+            // el saldo pendiente completo (no sobre el abono)
             if (deuda.tipo == "Tarjeta de crédito") {
                 if (body.montoAbono <= 0) throw Exception("El monto del abono debe ser mayor a cero")
                 if (body.montoAbono > saldoPendiente) throw Exception("El abono supera el saldo pendiente")
                 montoPago = body.montoAbono
                 interesDelMes = saldoPendiente * (producto.interesMensual / 100)
-                totalDebitado = montoPago + interesDelMes
+                totalDebitado = montoPago + interesDelMes // lo que realmente sale del bolsillo
             } else {
+                // Otros tipos de deuda: el service calcula la cuota fija automáticamente
                 montoPago = DeudaService.calcularMontoCuota(deuda)
                 interesDelMes = 0.0
-                totalDebitado = montoPago
+                totalDebitado = montoPago // sin interés adicional
                 if (montoPago <= 0) throw Exception("No hay saldo pendiente")
             }
 
 // ── Validar saldo del producto de pago ────────────────────────────────
-            if (producto.saldoActual < totalDebitado)
-                throw Exception(
-                    "Saldo insuficiente en ${producto.nombre}. " +
-                            "Necesitas $${totalDebitado.toLong()} " +
-                            "(abono $${montoPago.toLong()} + interés $${interesDelMes.toLong()})"
-                )
+            // Valida saldo antes de hacer cualquier escritura en Firestore,
+            // el mensaje incluye el desglose abono + interés para que el usuario entienda
+            if (producto.saldoActual < totalDebitado) throw Exception(
+                "Saldo insuficiente en ${producto.nombre}. " + "Necesitas $${totalDebitado.toLong()} " + "(abono $${montoPago.toLong()} + interés $${interesDelMes.toLong()})"
+            )
 
 // ── Descontar del producto de pago ────────────────────────────────────
+            // Tres escrituras en Firestore en secuencia:
+            // 1. Descuenta del producto de pago (cuenta/efectivo desde donde sale el dinero)
             ProductoRepository.actualizar(
                 uid, body.productoPagoId, mapOf(
                     "saldoActual" to (producto.saldoActual - totalDebitado)
@@ -124,6 +129,8 @@ object DeudaController {
             )
 
 // ── Si es tarjeta de crédito, reducir saldoUsado del producto vinculado ──
+            // 2. Si la deuda era de tarjeta de crédito, libera cupo en la tarjeta vinculada.
+            //    maxOf(..., 0.0) evita que saldoUsado quede negativo por redondeos
             if (deuda.tipo == "Tarjeta de crédito" && deuda.productoId != null) {
                 val productoTarjeta = ProductoRepository.obtenerPorId(uid, deuda.productoId)
                 if (productoTarjeta != null) {
@@ -138,6 +145,8 @@ object DeudaController {
 // ── Actualizar deuda ──────────────────────────────────────────────────
             val nuevasCuotasPagadas = deuda.cuotasPagadas + 1
             val nuevoMontoPagado = deuda.montoPagado + montoPago
+            // 3. Actualiza la deuda: acumula lo pagado y cambia estado a "pagada"
+            //    si el total pagado ya cubre el monto original
             val nuevoEstado = if (nuevoMontoPagado >= deuda.monto) "pagada" else "pendiente"
 
             val deudaActualizada = DeudaRepository.actualizar(
@@ -150,8 +159,7 @@ object DeudaController {
 
             call.respond(
                 HttpStatusCode.OK, AbonoResponse(
-                    deuda = deudaActualizada,
-                    montoPago = totalDebitado   // lo que realmente salió del bolsillo
+                    deuda = deudaActualizada, montoPago = totalDebitado   // lo que realmente salió del bolsillo
                 )
             )
 

@@ -41,6 +41,8 @@ object UsuarioService {
         val actual = UserRepository.obtenerUsuario(uid)
             ?: User(uid = uid, nombre = "", email = "")
 
+        // UsuarioService.actualizarPerfil: actualiza en Firebase Auth primero para mantener
+        // el token sincronizado, luego en Firestore con copy() para no pisar campos no enviados
         val actualizado = actual.copy(
             nombre = req.nombre ?: actual.nombre,
             email  = req.email  ?: actual.email

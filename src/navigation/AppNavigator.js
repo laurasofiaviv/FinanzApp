@@ -24,7 +24,7 @@ function MainStack() {
       <Stack.Screen name="Productos" component={ProductsScreen} options={{ presentation: 'card' }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="EditProduct" component={EditProductScreen} />
-      <Stack.Screen name="Notificaciones"  component={NotificacionesScreen} />
+      <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
     </Stack.Navigator>
   );
 }
@@ -32,7 +32,11 @@ function MainStack() {
 // Stack mínimo para mostrar EmailSent mientras espera verificación
 function VerificationStack({ email }) {
   return (
+    // MainStack usa headerShown: false globalmente porque cada pantalla
+    // maneja su propio header con diseño personalizado
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      // VerificationStack recibe el email como initialParams para mostrarlo
+      // en la pantalla EmailSent sin necesidad de pasarlo por contexto
       <Stack.Screen
         name="EmailSent"
         component={EmailSentScreen}
@@ -46,8 +50,14 @@ function VerificationStack({ email }) {
 export default function AppNavigator() {
   const { usuario, cargando } = useContext(AuthContext);
 
+  // Retorna null mientras Firebase resuelve el estado de sesión inicial,
+  // evitando un flash de la pantalla de login antes de saber si hay sesión activa
   if (cargando) return null; // ← espera a Firebase antes de renderizar cualquier stack
-  // Sin sesión → pantallas de auth
+  
+  // Sin sesión → pantallas de auth (AuthStack)
+  // Tres estados de navegación mutuamente excluyentes:
+  // sesión sin verificar → VerificationStack (pantalla de "revisa tu correo")
+  // sesión verificada → MainStack (app completa)
   if (!usuario) return <AuthStack />;
 
   // Con sesión pero sin verificar correo → pantalla de verificación

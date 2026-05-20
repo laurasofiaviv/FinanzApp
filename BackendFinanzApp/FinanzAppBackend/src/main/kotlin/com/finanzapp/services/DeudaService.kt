@@ -24,6 +24,9 @@ object DeudaService {
                 if (interes <= 0 || cuotas <= 1) {
                     deuda.monto / cuotas
                 } else {
+                    // DeudaService — calcularMontoCuota:
+                    // Préstamo bancario con interés usa la fórmula de amortización francesa (cuota fija),
+                    // donde cada cuota tiene la misma cantidad pero distinta proporción capital/interés
                     val r = interes / 100
                     val n = cuotas.toDouble()
                     deuda.monto * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)

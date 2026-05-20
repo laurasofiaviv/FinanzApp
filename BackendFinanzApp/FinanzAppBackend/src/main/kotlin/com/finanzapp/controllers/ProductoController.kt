@@ -74,7 +74,12 @@ object ProductoController {
             return
         }
         try {
+            // Recibe el body como Map<String, JsonElement> en vez de ProductoRequest
+            // para hacer un PATCH parcial: solo actualiza los campos que llegaron,
+            // ignora los que no se enviaron
             val body = call.receive<Map<String, JsonElement>>()
+            // Cada campo se extrae con el tipo correcto usando las extensiones de kotlinx:
+            // jsonPrimitive convierte el JsonElement a primitivo, luego se castea al tipo esperado
             val datos = buildMap<String, Any?> {
                 body["nombre"]?.jsonPrimitive?.contentOrNull?.let { put("nombre", it) }
                 body["cupoTotal"]?.jsonPrimitive?.doubleOrNull?.let { put("cupoTotal", it) }

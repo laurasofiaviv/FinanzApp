@@ -6,6 +6,8 @@ import { fmt, parsear, isoADisplay, hoyISO } from '../utils/formatUtils';
 import { useProductos } from '../context/ProductContext';
 import { useDeudas } from '../context/DeudaContext';
 
+// Estado vacío con factory function: se llama como función (no objeto directo)
+// para que cada reset genere un objeto nuevo e independiente en memoria
 const estadoVacio = () => ({
   montoNum: '',
   montoDisplay: '',
@@ -34,9 +36,13 @@ export function useRegisterMov() {
   const [toast, setToast] = useState(null);
   const [shakeAnim] = useState(new Animated.Value(0));
 
+  // Actualiza un campo del formulario y limpia simultáneamente su error,
+  // evitando que mensajes de validación viejos persistan tras una corrección
   const setField = (key, val) =>
     setForm(prev => ({ ...prev, [key]: val, errors: { ...prev.errors, [key]: null } }));
 
+  // Parsea el texto ingresado a número y genera el display formateado en paralelo,
+  // separando el valor real (montoNum) del valor visual (montoDisplay)
   const handleMonto = (texto) => {
     const num = parsear(texto);
     setForm(prev => ({
@@ -57,6 +63,8 @@ export function useRegisterMov() {
     const e = {};
     if (!form.montoNum || form.montoNum <= 0) e.monto = 'Ingresa un monto válido';
     if (!form.fechaISO) e.fecha = 'Selecciona una fecha';
+    // Validación diferenciada por tab: las deudas requieren fecha de vencimiento,
+    // los ingresos no requieren categoría
     if (tab !== 'ingreso' && !form.categoria) e.categoria = 'Selecciona una opción';
     if (tab === 'deuda' && !form.fechaVencimientoISO) e.vencimiento = 'Selecciona fecha de pago';
     setForm(prev => ({ ...prev, errors: e }));
@@ -64,6 +72,8 @@ export function useRegisterMov() {
   };
 
   const triggerShake = () => {
+    // Animación de shake: secuencia de movimientos horizontales alternados
+    // useNativeDriver: true la delega al hilo nativo para mejor performance
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
@@ -80,6 +90,7 @@ export function useRegisterMov() {
       montoDisplay: '$' + form.montoDisplay,
       fecha: isoADisplay(form.fechaISO),
     };
+    // Incluye recurrenteData solo si el movimiento es recurrente, o null si no lo es
     const recurrenteData = esRecurrente ? { frecuencia, modo } : null;
     let resultado = true;
 
@@ -109,9 +120,11 @@ export function useRegisterMov() {
       });
     }
 
+    // Si agregarGasto retorna false (saldo insuficiente), muestra el toast de error
+    // y dispara la animación de shake en lugar de guardar
     if (!resultado) {
       setToast('Transacción rechazada: saldo insuficiente');
-      triggerShake();
+      triggerShake();// ← animación de vibración horizontal
       setTimeout(() => setToast(null), 2500);
       return;
     }

@@ -7,6 +7,7 @@ import { obtenerPerfil, actualizarPerfil } from '../services/userService';
 import { useProductos } from '../context/ProductContext';
 
 export function useProfile() {
+    // Extrae el usuario autenticado y la función logout del contexto global de auth
     const { usuario, logout } = useAuth();
     const { productos } = useProductos();
 
@@ -23,11 +24,15 @@ export function useProfile() {
     const [passExito, setPassExito] = useState('');
     const [guardandoPass, setGuardandoPass] = useState(false);
 
+    // Genera las iniciales del avatar: toma las primeras letras de cada palabra del nombre,
+    // o la primera letra del email si no hay nombre, o '?' como fallback
     const initials = nombre
         ? nombre.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
         : (usuario?.email?.[0]?.toUpperCase() || '?');
 
     useEffect(() => {
+        // IIFE async: se ejecuta inmediatamente al montar el componente para cargar el perfil
+        // sin necesidad de una función separada
         (async () => {
             try {
                 const perfil = await obtenerPerfil();
@@ -76,11 +81,13 @@ export function useProfile() {
             setPassError('Las contraseñas nuevas no coinciden');
             return;
         }
-        
+
         setGuardandoPass(true);
         try {
             const auth = getAuth();
             const user = auth.currentUser;
+            // Reautentica al usuario con sus credenciales actuales antes de cambiar la contraseña.
+            // Firebase lo exige como medida de seguridad para operaciones sensibles
             const credential = EmailAuthProvider.credential(user.email, passActual);
             await reauthenticateWithCredential(user, credential);
             await updatePassword(user, passNueva);
@@ -91,6 +98,8 @@ export function useProfile() {
             setPassExito('✓ Contraseña actualizada correctamente');
         } catch (e) {
             setPassError(
+                // Distingue entre contraseña incorrecta y otros errores de Firebase
+                // para mostrar un mensaje específico al usuario
                 e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential'
                     ? 'La contraseña actual es incorrecta'
                     : 'No se pudo cambiar la contraseña'

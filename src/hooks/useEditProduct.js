@@ -6,6 +6,7 @@ import { fmt, parsear } from '../utils/formatUtils';
 export function useEditProduct(productoId, navigation) {
   const { productos, eliminarProducto, editarProducto } = useProductos();
 
+  // Busca el producto a editar; null si no existe (pantalla mostrará error)
   const original = productos.find((p) => p.id === productoId) || null;
 
   const [nombre, setNombre] = useState(original?.nombre || '');
@@ -17,15 +18,18 @@ export function useEditProduct(productoId, navigation) {
   const [guardando, setGuardando] = useState(false);
   const [showConfirmEliminar, setShowConfirmEliminar] = useState(false);
 
+  // Determina qué campos mostrar según el tipo del producto
   const esCredito = original?.tipo === 'credito';
   const esSaldo = original?.tipo === 'debito' || original?.tipo === 'efectivo';
 
+  // Etiqueta legible del tipo para mostrar en la UI
   const tipoLabel = {
     credito: 'Tarjeta de crédito',
     efectivo: 'Efectivo',
     debito: 'Cuenta débito',
   }[original?.tipo] || '';
 
+  // Valida campos según tipo: crédito requiere cupo y días; todos requieren nombre
   const validar = () => {
     const e = {};
     if (!nombre.trim()) e.nombre = 'El nombre no puede estar vacío.';
@@ -41,6 +45,7 @@ export function useEditProduct(productoId, navigation) {
     return Object.keys(e).length === 0;
   };
 
+  // Guarda los cambios y vuelve a la pantalla anterior si tiene éxito
   const handleGuardar = async () => {
     if (!validar()) return;
     setGuardando(true);
@@ -60,8 +65,10 @@ export function useEditProduct(productoId, navigation) {
     if (ok) navigation.goBack();
   };
 
+  // Abre el modal de confirmación antes de eliminar
   const handleEliminar = () => setShowConfirmEliminar(true);
 
+  // Elimina el producto y vuelve al inicio del stack si tiene éxito
   const confirmarEliminar = () => {
     setShowConfirmEliminar(false);
     eliminarProducto(productoId).then((ok) => {
@@ -69,6 +76,7 @@ export function useEditProduct(productoId, navigation) {
     });
   };
 
+  // Handlers de campo: actualizan estado y limpian el error correspondiente
   const handleNombre = (v) => { setNombre(v); setErrors(p => ({ ...p, nombre: null })); };
   const handleCupo = (t) => { setCupoDisp(fmt(parsear(t)) || ''); setErrors(p => ({ ...p, cupo: null })); };
   const handleSaldo = (t) => { setSaldoDisp(fmt(parsear(t)) || ''); };
